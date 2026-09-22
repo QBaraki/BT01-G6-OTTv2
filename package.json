@@ -1,0 +1,1 @@
+{"name":"ottv2","version":"1.0.0","type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"tsc --noEmit && vite build","test":"vitest run","typecheck":"tsc --noEmit"},"dependencies":{"playhtml":"^2.14.1"},"devDependencies":{"typescript":"^5.9.2","vite":"^7.1.0","vitest":"^3.2.4"}}
