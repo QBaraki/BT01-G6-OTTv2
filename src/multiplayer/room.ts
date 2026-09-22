@@ -77,7 +77,7 @@ function openRoom(lobby:Lobby,meta:RoomMeta,channel:Channel<Game>,onUpdate:()=>v
 export function leave(room:Room){room.change(d=>{
  const i=d.seats.findIndex(s=>s?.id===room.identity);if(i<0)return;
  d.seats.splice(i,1,null);
- if(d.status!=='FINISHED'){d.status='WAITING';d.pieces.splice(0,d.pieces.length);d.history.splice(0,d.history.length);d.winner=null;d.reason='';d.seats.forEach(s=>{if(s){s.ready=false;s.rematch=false}});d.matchId=newId();d.version++}
+ if(d.status!=='FINISHED'){d.status='WAITING';d.pieces.splice(0,d.pieces.length);d.history.splice(0,d.history.length);d.winner=null;d.reason='';d.lastMove=null;d.seats.forEach(s=>{if(s){s.ready=false;s.rematch=false}});d.matchId=newId();d.version++}
 })}
 export function submitMove(room:Room,move:Move){room.change(d=>{
  const next=applyMove(d,move);if(next===d)return;
@@ -85,8 +85,8 @@ export function submitMove(room:Room,move:Move){room.change(d=>{
  if(victim>=0)d.pieces.splice(victim,1);
  const moving=d.pieces.find(p=>p.id===move.pieceId);if(!moving)return;
  moving.position.row=move.to.row;moving.position.col=move.to.col;
- d.history.push(next.history[next.history.length-1]);d.turn=next.turn;d.version=next.version;d.status=next.status;d.winner=next.winner;d.reason=next.reason;
+ d.history.push(next.history[next.history.length-1]);d.turn=next.turn;d.version=next.version;d.status=next.status;d.winner=next.winner;d.reason=next.reason;d.lastMove=next.lastMove;
 })}
-export function ready(room:Room){room.change(d=>{const s=d.seats.find(x=>x?.id===room.identity);if(!s||d.status!=='WAITING')return;s.ready=!s.ready;const next=start(d);if(next===d)return;d.pieces.push(...initialPieces());d.turn=next.turn;d.version=next.version;d.status='PLAYING'})}
-export function agreeRematch(room:Room){room.change(d=>{const s=d.seats.find(x=>x?.id===room.identity);if(!s||d.status!=='FINISHED')return;s.rematch=true;const next=rematch(d);if(next===d)return;d.match=next.match;d.matchId=next.matchId;d.pieces.splice(0,d.pieces.length);d.pieces.push(...initialPieces());d.history.splice(0,d.history.length);d.turn=next.turn;d.winner=null;d.reason='';d.status='PLAYING';d.version=next.version;d.seats.forEach(seat=>{if(seat)seat.rematch=false})})}
+export function ready(room:Room){room.change(d=>{const s=d.seats.find(x=>x?.id===room.identity);if(!s||d.status!=='WAITING')return;s.ready=!s.ready;const next=start(d);if(next===d)return;d.pieces.push(...initialPieces());d.turn=next.turn;d.version=next.version;d.status='PLAYING';d.lastMove=null})}
+export function agreeRematch(room:Room){room.change(d=>{const s=d.seats.find(x=>x?.id===room.identity);if(!s||d.status!=='FINISHED')return;s.rematch=true;const next=rematch(d);if(next===d)return;d.match=next.match;d.matchId=next.matchId;d.pieces.splice(0,d.pieces.length);d.pieces.push(...initialPieces());d.history.splice(0,d.history.length);d.turn=next.turn;d.winner=null;d.reason='';d.status='PLAYING';d.version=next.version;d.lastMove=null;d.seats.forEach(seat=>{if(seat)seat.rematch=false})})}
 export function surrender(room:Room){room.change(d=>{const i=d.seats.findIndex(x=>x?.id===room.identity);if(i>=0&&d.status==='PLAYING'){d.status='FINISHED';d.winner=i===0?2:1;d.reason='Đối phương đầu hàng';d.version++}})}

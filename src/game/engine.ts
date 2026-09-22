@@ -5,7 +5,8 @@ export type Pos = {row:number; col:number};
 export type Piece = {id:string; owner:Player; type:Kind; position:Pos};
 export type Move = {gameId:string; matchId:string; moveId:string; playerId:string; pieceId:string; from:Pos; to:Pos; expectedVersion:number};
 export type Seat = {id:string; name:string; ready:boolean; rematch:boolean} | null;
-export type Game = {gameId:string; matchId:string; match:number; version:number; status:'WAITING'|'PLAYING'|'FINISHED'; seats:[Seat,Seat]; pieces:Piece[]; turn:Player; winner:Player|null; reason:string; history:{moveId:string; text:string}[]};
+export type LastMove = {pieceId:string; player:Player; from:Pos; to:Pos};
+export type Game = {gameId:string; matchId:string; match:number; version:number; status:'WAITING'|'PLAYING'|'FINISHED'; seats:[Seat,Seat]; pieces:Piece[]; turn:Player; winner:Player|null; reason:string; history:{moveId:string; text:string}[]; lastMove:LastMove|null};
 export const kinds:Kind[]=['rock','paper','scissors'];
 export const icons:Record<Kind,string>={rock:'✊',paper:'✋',scissors:'✌️'};
 export const inside=(p:Pos)=>p.row>=0&&p.row<9&&p.col>=0&&p.col<9;
@@ -18,7 +19,7 @@ export function initialPieces():Piece[]{
  for(const owner of [1,2] as Player[]) for(let i=0;i<9;i++) result.push({id:`p${owner}-${i}`,owner,type:kinds[i%3],position:owner===1?{row:1+Math.floor(i/3),col:i%3}:{row:7-Math.floor(i/3),col:8-i%3}});
  return result;
 }
-export const fresh=(gameId:string):Game=>({gameId,matchId:newId(),match:1,version:0,status:'WAITING',seats:[null,null],pieces:[],turn:1,winner:null,reason:'',history:[]});
+export const fresh=(gameId:string):Game=>({gameId,matchId:newId(),match:1,version:0,status:'WAITING',seats:[null,null],pieces:[],turn:1,winner:null,reason:'',history:[],lastMove:null});
 export function legal(pieces:Piece[],piece:Piece,to:Pos):boolean{
  if(!inside(to)||Math.max(Math.abs(piece.position.row-to.row),Math.abs(piece.position.col-to.col))!==1)return false;
  const target=at(pieces,to);return !target||(target.owner!==piece.owner&&beats(piece.type,target.type));
@@ -36,9 +37,10 @@ export function applyMove(g:Game,m:Move):Game{
  if((g.turn===1&&same(m.to,{row:8,col:8}))||(g.turn===2&&same(m.to,{row:0,col:0}))){winner=g.turn;reason=`Đưa quân vào ${label(m.to)}`}
  else if(kinds.some(k=>!pieces.some(p=>p.owner===other&&p.type===k))){winner=g.turn;reason='Loại hết một loại quân đối phương'}
  const next:{turn:Player;status:Game['status'];winner:Player|null;reason:string}={turn:other,status:winner?'FINISHED':'PLAYING',winner,reason};
- const updated:Game={...g,...next,pieces,version:g.version+1,history:[...g.history,{moveId:m.moveId,text:`${seat.name}: ${icons[piece.type]} ${label(m.from)} → ${label(m.to)}${victim?' × '+icons[victim.type]:''}`} ]};
- if(!winner&&!hasMove(updated,other))return {...updated,status:'FINISHED',reason:'Hòa do hết nước đi'};
+ const lastMove:LastMove={pieceId:piece.id,player:g.turn,from:{...m.from},to:{...m.to}};
+ const updated:Game={...g,...next,pieces,version:g.version+1,lastMove,history:[...g.history,{moveId:m.moveId,text:`${seat.name}: ${icons[piece.type]} ${label(m.from)} → ${label(m.to)}${victim?' × '+icons[victim.type]:''}`} ]};
+ if(!winner&&!hasMove(updated,other))return {...updated,status:'FINISHED',reason:'Hòa do hết nước đi',lastMove};
  return updated;
 }
-export function start(g:Game):Game{if(g.status!=='WAITING'||!g.seats[0]?.ready||!g.seats[1]?.ready)return g;return {...g,status:'PLAYING',pieces:initialPieces(),turn:g.match%2===1?1:2,version:g.version+1}}
-export function rematch(g:Game):Game{if(g.status!=='FINISHED'||!g.seats[0]?.rematch||!g.seats[1]?.rematch)return g;return {...g,match:g.match+1,matchId:newId(),pieces:initialPieces(),turn:g.match%2===1?2:1,winner:null,reason:'',history:[],status:'PLAYING',version:g.version+1,seats:g.seats.map(s=>s?{...s,rematch:false}:null) as [Seat,Seat]}}
+export function start(g:Game):Game{if(g.status!=='WAITING'||!g.seats[0]?.ready||!g.seats[1]?.ready)return g;return {...g,status:'PLAYING',pieces:initialPieces(),turn:g.match%2===1?1:2,version:g.version+1,lastMove:null}}
+export function rematch(g:Game):Game{if(g.status!=='FINISHED'||!g.seats[0]?.rematch||!g.seats[1]?.rematch)return g;return {...g,match:g.match+1,matchId:newId(),pieces:initialPieces(),turn:g.match%2===1?2:1,winner:null,reason:'',history:[],status:'PLAYING',version:g.version+1,lastMove:null,seats:g.seats.map(s=>s?{...s,rematch:false}:null) as [Seat,Seat]}}
