@@ -1,6 +1,6 @@
 # OTTv2 — Oẳn Tù Tì Online
 
-Game chiến thuật hai người trên bàn 9×9, viết bằng TypeScript, Vite, Vitest và playhtml.
+Game chiến thuật hai người với biến thể bàn cờ cấu hình được, viết bằng TypeScript, Vite, Vitest và playhtml. Mặc định là bàn 9×9; hiện có thêm biến thể 10×10.
 
 ## Chạy trên Ubuntu
 
@@ -25,7 +25,7 @@ Mỗi lần chạy `npm run dev` dùng một phiên lobby mới; các máy phả
 
 ## Luật
 
-Mỗi bên có 3 ✊, 3 ✋, 3 ✌️. Player 1 ở a2:c4, Player 2 ở g6:i8. Đi đúng một ô theo tám hướng; ✊ ăn ✌️, ✌️ ăn ✋, ✋ ăn ✊. Cùng loại chặn nhau. Loại hết một loại quân đối phương hoặc tới i9 (Player 1), a1 (Player 2) để thắng. Không còn nước đi là hòa. Trận đầu Player 1 đi trước; chơi lại đổi người đi trước.
+Mỗi bên có 3 ✊, 3 ✋, 3 ✌️. Player 1 ở a2:c4, Player 2 ở g6:i8. Đi đúng một ô theo tám hướng; ✊ ăn ✌️, ✌️ ăn ✋, ✋ ăn ✊. Cùng loại chặn nhau. Loại hết một loại quân đối phương hoặc tới i9 (Player 1), a1 (Player 2) để thắng. Không còn nước đi là hòa. Trận đầu Player 1 đi trước; chơi lại đổi người đi trước. Khi tạo phòng có thể chọn biến thể bàn 9×9 hoặc 10×10.
 
 ```mermaid
 flowchart LR
@@ -39,7 +39,9 @@ A[Click quân] --> B[Chọn ô] --> C[Validate] --> D[Update state] --> E[Synchr
 
 ## Kiến trúc và triển khai
 
-`src/game/engine.ts` chứa luật thuần; `src/multiplayer/room.ts` quản lý danh sách phòng, kênh game và presence; `src/main.ts` hiển thị UI. Build bằng `npm run build`, đưa `dist/` lên Vercel hoặc Netlify. Muốn chơi qua Internet, cả hai dùng cùng URL HTTPS sau khi triển khai.
+`src/game/variants/types.ts` định nghĩa cấu trúc biến thể; `src/game/variants/classic.ts` và `src/game/variants/large-board.ts` chứa cấu hình bàn, đội hình, cách di chuyển, quân cờ và điều kiện thắng. Đăng ký biến thể mới trong `src/game/variants/index.ts`. `src/game/engine.ts` áp dụng cấu hình đó; trạng thái trận lưu mã và phiên bản biến thể để đồng bộ với người chơi/replay. Khi thêm biến thể, bổ sung test trong `tests/engine.test.ts`.
+
+`src/multiplayer/room.ts` quản lý danh sách phòng, kênh game và presence; `src/main.ts` dựng giao diện theo biến thể của phòng. Bot Arena backend hiện vẫn dùng engine riêng với luật 9×9. Build bằng `npm run build`, đưa `dist/` lên Vercel hoặc Netlify. Muốn chơi qua Internet, cả hai dùng cùng URL HTTPS sau khi triển khai.
 
 ## Kiểm thử multiplayer
 

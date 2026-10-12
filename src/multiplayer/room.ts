@@ -9,11 +9,13 @@ import {
   rematch,
   initialPieces,
 } from "../game/engine";
+import { getVariant } from "../game/variants";
 import { roomKey } from "./roomKey";
 
 export type RoomMeta = {
   code: string;
   gameId: string;
+  variantId?: string;
   createdAt: number;
   status: Game["status"];
   player1: string | null;
@@ -82,15 +84,6 @@ export async function connectLobby(onUpdate: () => void): Promise<Lobby> {
   listeners.add(onUpdate);
   let timer: ReturnType<typeof setTimeout> | undefined;
   const emit = () => listeners.forEach((fn) => fn());
-  registry.onUpdate(() => {
-    emit();
-    scheduleCleanup();
-  });
-  playhtml.presence.onPresenceChange("ott", () => {
-    emit();
-    scheduleCleanup();
-  });
-  playhtml.presence.setMyPresence("ott", { roomCode: null });
   const cleanup = () => {
     const active = online();
     const remove = Object.values(registry.getData().rooms)
@@ -103,10 +96,19 @@ export async function connectLobby(onUpdate: () => void): Promise<Lobby> {
             delete d.rooms[code];
       });
   };
-  function scheduleCleanup() {
+  const scheduleCleanup = () => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(cleanup, 1800);
-  }
+  };
+  registry.onUpdate(() => {
+    emit();
+    scheduleCleanup();
+  });
+  playhtml.presence.onPresenceChange("ott", () => {
+    emit();
+    scheduleCleanup();
+  });
+  playhtml.presence.setMyPresence("ott", { roomCode: null });
   scheduleCleanup();
   return {
     identity,
@@ -141,7 +143,7 @@ export async function connectLobby(onUpdate: () => void): Promise<Lobby> {
     channel: (meta) =>
       playhtml.createPageData<Game>(
         `game-${meta.gameId}`,
-        fresh(meta.gameId),
+        fresh(meta.gameId, meta.variantId),
       ) as Channel<Game>,
     setPresence: (code) =>
       playhtml.presence.setMyPresence("ott", { roomCode: code }),
@@ -157,6 +159,7 @@ export function createRoom(
   lobby: Lobby,
   name: string,
   onUpdate: () => void,
+  variantId?: string,
 ): Room {
   let code = makeCode();
   while (lobby.list().some((m) => m.code === code)) code = makeCode();
@@ -164,6 +167,7 @@ export function createRoom(
   const meta: RoomMeta = {
     code,
     gameId,
+    variantId,
     createdAt: Date.now(),
     status: "WAITING",
     player1: lobby.identity,
@@ -291,7 +295,7 @@ export function ready(room: Room) {
     s.ready = !s.ready;
     const next = start(d);
     if (next === d) return;
-    d.pieces.push(...initialPieces());
+    d.pieces.push(...initialPieces(getVariant(d.variantId)));
     d.turn = next.turn;
     d.version = next.version;
     d.status = "PLAYING";
@@ -308,7 +312,7 @@ export function agreeRematch(room: Room) {
     d.match = next.match;
     d.matchId = next.matchId;
     d.pieces.splice(0, d.pieces.length);
-    d.pieces.push(...initialPieces());
+    d.pieces.push(...initialPieces(getVariant(d.variantId)));
     d.history.splice(0, d.history.length);
     d.turn = next.turn;
     d.winner = null;

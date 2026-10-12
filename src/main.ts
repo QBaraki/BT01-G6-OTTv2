@@ -4,14 +4,14 @@ import { newId } from "./utils/id";
 import {
   at,
   legalMoves,
-  icons,
-  kinds,
   label,
+  columnLabel,
   initialPieces,
   type Game,
   type Pos,
   type Player,
 } from "./game/engine";
+import { getVariant, listVariants } from "./game/variants";
 import {
   connectLobby,
   createRoom,
@@ -35,6 +35,7 @@ let lobby: Lobby | null = null,
   room: Room | null = null,
   selected: string | null = null;
 let name = localStorage.getItem("ott-name") || "",
+  selectedVariantId = "classic-9x9",
   error = "";
 let invitation =
   new URLSearchParams(location.search).get("room")?.toUpperCase() || "";
@@ -82,7 +83,14 @@ function enter(code?: string) {
   try {
     room = code
       ? joinRoom(lobby, code, playerName, render)
-      : createRoom(lobby, playerName, render);
+      : createRoom(
+          lobby,
+          playerName,
+          render,
+          app.querySelector<HTMLSelectElement>("#variant")?.value ??
+            selectedVariantId,
+        );
+    if (!code) selectedVariantId = room.read().variantId;
     selected = null;
     error = "";
     history.replaceState(null, "", `?room=${room.code}`);
@@ -98,10 +106,22 @@ function renderHome() {
     .list()
     .map((m) => {
       const count = Number(!!m.player1) + Number(!!m.player2);
-      return `<div class="room-row"><div><b>${escape(m.code)}</b><small>${escape(m.name1 || "Trống")} · ${escape(m.name2 || "Trống")} · ${count}/2 · ${m.status === "WAITING" ? "Đang chờ" : m.status === "PLAYING" ? "Đang chơi" : "Đã xong"}</small></div><button data-room="${escape(m.code)}">Vào phòng</button></div>`;
+      return `<div class="room-row"><div><b>${escape(m.code)}</b><small>${escape(getVariant(m.variantId).name)} · ${escape(m.name1 || "Trống")} · ${escape(m.name2 || "Trống")} · ${count}/2 · ${m.status === "WAITING" ? "Đang chờ" : m.status === "PLAYING" ? "Đang chơi" : "Đã xong"}</small></div><button data-room="${escape(m.code)}">Vào phòng</button></div>`;
     })
     .join("");
-  app.innerHTML = `<main class="home"><div class="brand">OTT<span>v2</span></div><p class="eyebrow">OẲN TÙ TÌ · CHIẾN THUẬT 9×9</p><h1>Chọn phòng.<br><em>Bắt đầu ván đấu.</em></h1><p class="intro">Tạo phòng mới, gửi mã cho bạn bè hoặc tham gia một phòng đang có.</p><button id="bot-arena" class="primary" style="margin:16px 0">BOT ARENA · Đấu bot ↗</button><div class="home-card"><label>TÊN CỦA BẠN<input id="name" maxlength="24" placeholder="Nhập tên hiển thị" value="${escape(name)}"></label><button id="create" class="primary">Tạo phòng mới <span>↗</span></button><div class="divider">HOẶC THAM GIA BẰNG MÃ</div><div class="join-row"><input id="code" maxlength="12" placeholder="Mã phòng" value="${escape(invitation)}"><button id="join">Tham gia</button></div><p class="error">${escape(error)}</p></div><section class="room-list"><p class="eyebrow">PHÒNG HIỆN CÓ · ${lobby.list().length}</p>${rows || '<p class="empty-rooms">Chưa có phòng nào. Hãy tạo phòng đầu tiên.</p>'}</section><div class="how"><b>LUẬT CHƠI</b><div><span>✊ thắng ✌️</span><span>✌️ thắng ✋</span><span>✋ thắng ✊</span></div><p>Mỗi lượt đi một ô theo tám hướng. Cùng loại không thể ăn nhau.</p></div></main>`;
+  app.innerHTML = `<main class="home"><div class="brand">OTT<span>v2</span></div><p class="eyebrow">OẲN TÙ TÌ · CHIẾN THUẬT</p><h1>Chọn phòng.<br><em>Bắt đầu ván đấu.</em></h1><p class="intro">Tạo phòng mới, gửi mã cho bạn bè hoặc tham gia một phòng đang có.</p><button id="bot-arena" class="primary" style="margin:16px 0">BOT ARENA · Đấu bot ↗</button><div class="home-card"><label>TÊN CỦA BẠN<input id="name" maxlength="24" placeholder="Nhập tên hiển thị" value="${escape(name)}"></label><label>BIẾN THỂ BÀN CỜ<select id="variant">${listVariants()
+    .map(
+      (variant) =>
+        `<option value="${escape(variant.id)}" ${variant.id === selectedVariantId ? "selected" : ""}>${escape(variant.name)}</option>`,
+    )
+    .join(
+      "",
+    )}</select></label><button id="create" class="primary">Tạo phòng mới <span>↗</span></button><div class="divider">HOẶC THAM GIA BẰNG MÃ</div><div class="join-row"><input id="code" maxlength="12" placeholder="Mã phòng" value="${escape(invitation)}"><button id="join">Tham gia</button></div><p class="error">${escape(error)}</p></div><section class="room-list"><p class="eyebrow">PHÒNG HIỆN CÓ · ${lobby.list().length}</p>${rows || '<p class="empty-rooms">Chưa có phòng nào. Hãy tạo phòng đầu tiên.</p>'}</section><div class="how"><b>LUẬT CHƠI</b><div><span>✊ thắng ✌️</span><span>✌️ thắng ✋</span><span>✋ thắng ✊</span></div><p>Mỗi lượt đi một ô theo tám hướng. Cùng loại không thể ăn nhau.</p></div></main>`;
+  app
+    .querySelector<HTMLSelectElement>("#variant")!
+    .addEventListener("change", (event) => {
+      selectedVariantId = (event.target as HTMLSelectElement).value;
+    });
   app.querySelector("#bot-arena")!.addEventListener("click", () => {
     botMode = true;
     showBotMode();
@@ -126,38 +146,47 @@ function renderHome() {
 function renderGame() {
   if (!room) return;
   const g = room.read(),
+    variant = getVariant(g.variantId),
     me = g.seats.findIndex((s) => s?.id === room!.identity),
     online = room.online();
   const active = me >= 0 && g.status === "PLAYING" && g.turn === me + 1;
-  const displayed = g.status === "WAITING" ? initialPieces() : g.pieces;
+  const displayed = g.status === "WAITING" ? initialPieces(variant) : g.pieces;
   const piece = g.pieces.find((p) => p.id === selected && p.owner === me + 1);
-  const moves = active && piece ? legalMoves(g.pieces, piece) : [];
+  const moves = active && piece ? legalMoves(g.pieces, piece, variant) : [];
   const player = (n: Player) => {
     const s = g.seats[n - 1],
-      counts = kinds
+      counts = Object.entries(variant.pieces)
         .map(
-          (k) =>
-            `<span>${icons[k]} ${displayed.filter((p) => p.owner === n && p.type === k).length}</span>`,
+          ([kind, definition]) =>
+            `<span>${definition.icon} ${displayed.filter((p) => p.owner === n && p.type === kind).length}</span>`,
         )
         .join("");
     return `<div class="player p${n} ${g.turn === n && g.status === "PLAYING" ? "turn" : ""}"><div class="avatar">${n === 1 ? "01" : "02"}</div><div><small>PLAYER ${n} ${s?.id === room!.identity ? "· BẠN" : ""}</small><strong>${escape(s?.name || "Đang chờ người chơi")}</strong>${g.status === "WAITING" && s ? `<small>${s.ready ? "Đã sẵn sàng" : "Chưa sẵn sàng"}</small>` : ""}<div class="pieces">${counts}</div></div><span class="dot ${s && online.has(s.id) ? "on" : ""}"></span></div>`;
   };
   let board =
-    '<div class="coordinates"><span></span>' +
-    [..."abcdefghi"].map((c) => `<span>${c}</span>`).join("") +
-    '</div><div class="board">';
-  for (let r = 0; r < 9; r++) {
+    `<div class="coordinates" style="--board-cols: ${variant.board.cols}"><span></span>` +
+    Array.from(
+      { length: variant.board.cols },
+      (_, col) => `<span>${columnLabel(col)}</span>`,
+    ).join("") +
+    `</div><div class="board" style="--board-cols: ${variant.board.cols}">`;
+  for (let r = 0; r < variant.board.rows; r++) {
     board += `<span class="row-num">${r + 1}</span>`;
-    for (let c = 0; c < 9; c++) {
+    for (let c = 0; c < variant.board.cols; c++) {
       const pos = { row: r, col: c },
         p = at(displayed, pos),
         target = moves.some((m) => m.row === r && m.col === c),
-        goal = (r === 0 && c === 0) || (r === 8 && c === 8),
+        goal = Object.values(variant.victory.goals).some(
+          (position) => position && position.row === r && position.col === c,
+        ),
+        blocked = variant.board.blocked.some(
+          (position) => position.row === r && position.col === c,
+        ),
         recent =
           g.lastMove &&
           ((g.lastMove.from.row === r && g.lastMove.from.col === c) ||
             (g.lastMove.to.row === r && g.lastMove.to.col === c));
-      board += `<button class="cell ${(r + c) % 2 ? "dark" : "light"} ${p ? "occupied" : ""} ${p?.owner === 1 ? "blue" : p?.owner === 2 ? "orange" : ""} ${p?.id === selected ? "selected" : ""} ${target ? (p ? "capture" : "possible") : ""} ${goal ? "goal" : ""} ${recent ? "recent" : ""}" data-r="${r}" data-c="${c}" aria-label="${label(pos)} ${p ? icons[p.type] : ""}">${goal ? '<span class="goal-mark">◆</span>' : ""}${p ? `<span class="token">${icons[p.type]}</span>` : ""}</button>`;
+      board += `<button class="cell ${(r + c) % 2 ? "dark" : "light"} ${p ? "occupied" : ""} ${p?.owner === 1 ? "blue" : p?.owner === 2 ? "orange" : ""} ${p?.id === selected ? "selected" : ""} ${target ? (p ? "capture" : "possible") : ""} ${goal ? "goal" : ""} ${blocked ? "obstacle" : ""} ${recent ? "recent" : ""}" data-r="${r}" data-c="${c}" aria-label="${label(pos)} ${p ? variant.pieces[p.type].icon : ""}">${blocked ? '<span class="obstacle-mark">■</span>' : ""}${goal ? '<span class="goal-mark">◆</span>' : ""}${p ? `<span class="token">${variant.pieces[p.type].icon}</span>` : ""}</button>`;
     }
   }
   board += "</div>";
@@ -232,7 +261,7 @@ function clickCell(g: Game, pos: Pos, active: boolean) {
   const chosen = g.pieces.find((p) => p.id === selected);
   if (
     chosen &&
-    legalMoves(g.pieces, chosen).some(
+    legalMoves(g.pieces, chosen, getVariant(g.variantId)).some(
       (x) => x.row === pos.row && x.col === pos.col,
     )
   ) {

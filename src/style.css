@@ -81,7 +81,8 @@ button:disabled {
   font-weight: 700;
   color: #aab5a5;
 }
-.home-card input {
+.home-card input,
+.home-card select {
   display: block;
   width: 100%;
   margin: 11px 0 18px;
@@ -92,7 +93,8 @@ button:disabled {
   padding: 15px;
   outline: none;
 }
-.home-card input:focus {
+.home-card input:focus,
+.home-card select:focus {
   border-color: #baf25d;
 }
 .home-card button {
@@ -302,7 +304,7 @@ header button,
 }
 .coordinates {
   display: grid;
-  grid-template-columns: 22px repeat(9, 1fr);
+  grid-template-columns: 22px repeat(var(--board-cols, 9), 1fr);
   text-align: center;
   font-size: 11px;
   color: #9fb09a;
@@ -310,7 +312,7 @@ header button,
 }
 .board {
   display: grid;
-  grid-template-columns: 22px repeat(9, 1fr);
+  grid-template-columns: 22px repeat(var(--board-cols, 9), 1fr);
 }
 .row-num {
   display: grid;
@@ -378,6 +380,14 @@ header button,
   position: absolute;
   color: #e8edab88;
   font-size: 22px;
+}
+.cell.obstacle {
+  background: #394338;
+  cursor: not-allowed;
+}
+.obstacle-mark {
+  color: #a0aa9a;
+  font-size: clamp(12px, 2vw, 24px);
 }
 .hint {
   color: #9cac96;
@@ -536,7 +546,7 @@ aside {
   }
   .coordinates,
   .board {
-    grid-template-columns: 14px repeat(9, 1fr);
+    grid-template-columns: 14px repeat(var(--board-cols, 9), 1fr);
   }
   .token {
     border-width: 2px;

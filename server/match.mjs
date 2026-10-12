@@ -8,8 +8,12 @@ import { runSandboxedMove } from "./sandbox.mjs";
 const base = dirname(fileURLToPath(import.meta.url));
 const raw = await readFile(join(base, "engine.source.ts"), "utf8");
 // Exact copy of step-1 engine, with its relative utility import replaced for Node loading.
+const utilityImport =
+  /^import\s+\{\s*newId\s*\}\s+from\s+(['"])\.\.\/utils\/id\1;?\s*$/m;
+if (!utilityImport.test(raw))
+  throw new Error("Could not locate the engine newId import for Node loading");
 const prepared = raw.replace(
-  /^import\s+\{newId\}\s+from\s+['"]\.\.\/utils\/id['"];?/m,
+  utilityImport,
   "const newId=()=>globalThis.crypto.randomUUID();",
 );
 const compiled = ts.transpileModule(prepared, {

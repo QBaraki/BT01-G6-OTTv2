@@ -9,6 +9,7 @@ import {
   type Game,
   type Piece,
 } from "../src/game/engine";
+import { getVariant, largeBoardVariant } from "../src/game/variants";
 const game = (): Game =>
   start({
     ...fresh("A"),
@@ -40,6 +41,74 @@ describe("engine", () => {
         );
     expect(legal([p], p, { row: 6, col: 4 })).toBe(false);
     expect(legal([p], p, { row: 4, col: 9 })).toBe(false);
+  });
+  it("uses the selected variant dimensions, setup, and goal", () => {
+    const variant = getVariant(largeBoardVariant.id);
+    const pieces = initialPieces(variant);
+    const started = start({
+      ...fresh("large-board", variant.id),
+      seats: [
+        { id: "a", name: "A", ready: true, rematch: false },
+        { id: "b", name: "B", ready: true, rematch: false },
+      ],
+    });
+
+    expect(pieces).toHaveLength(18);
+    expect(variant.board.rows).toBe(10);
+    expect(variant.board.cols).toBe(10);
+    expect(legal(pieces, pieces[0], { row: 0, col: 0 }, variant)).toBe(true);
+    expect(legal(pieces, pieces[0], { row: 1, col: 10 }, variant)).toBe(false);
+    expect(started.variantId).toBe(variant.id);
+    expect(started.variantVersion).toBe(variant.version);
+    expect(started.pieces).toHaveLength(18);
+    expect(variant.victory.goals[1]).toEqual({ row: 9, col: 9 });
+
+    const goalGame: Game = {
+      ...started,
+      pieces: [
+        {
+          id: "runner",
+          owner: 1,
+          type: "rock",
+          position: { row: 8, col: 8 },
+        },
+        {
+          id: "opponent",
+          owner: 2,
+          type: "paper",
+          position: { row: 0, col: 1 },
+        },
+      ],
+    };
+    const result = applyMove(goalGame, {
+      gameId: goalGame.gameId,
+      matchId: goalGame.matchId,
+      moveId: "goal",
+      playerId: "a",
+      pieceId: "runner",
+      from: { row: 8, col: 8 },
+      to: { row: 9, col: 9 },
+      expectedVersion: goalGame.version,
+    });
+    expect(result.winner).toBe(1);
+  });
+  it("blocks configured obstacle cells", () => {
+    const variant = getVariant(largeBoardVariant.id);
+    const withObstacle = {
+      ...variant,
+      board: {
+        ...variant.board,
+        blocked: [{ row: 0, col: 0 }],
+      },
+    };
+    const piece: Piece = {
+      id: "p",
+      owner: 1,
+      type: "rock",
+      position: { row: 1, col: 0 },
+    };
+
+    expect(legal([piece], piece, { row: 0, col: 0 }, withObstacle)).toBe(false);
   });
   it("enforces capture cycle and friendly blocking", () => {
     expect(beats("rock", "scissors")).toBe(true);
