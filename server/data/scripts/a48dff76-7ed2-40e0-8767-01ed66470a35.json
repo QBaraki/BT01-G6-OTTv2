@@ -1,0 +1,1 @@
+{"id":"a48dff76-7ed2-40e0-8767-01ed66470a35","name":"Bot A","source":"\nexport function getMove(state) {\n  const moves = state.legalMoves;\n\n  if (moves.length === 0) {\n    return null;\n  }\n\n  return moves[0];\n}\n","sha256":"4d2c3a04265aa5398b12d74067f60aac8626683641f564e964bed9799c9487ca","createdAt":"2026-10-12T11:26:28.817Z"}

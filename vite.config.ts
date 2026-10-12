@@ -1,9 +1,17 @@
-import {randomUUID} from 'node:crypto';
-import {defineConfig} from 'vite';
 
-// Evaluated once per Vite server start (or production build). Every browser
-// served by that process receives the same ID, while a restart gets a new room.
-const sessionId = randomUUID();
+import { defineConfig } from 'vite';
+
 export default defineConfig({
-  define: {__OTT_SESSION_ID__: JSON.stringify(sessionId)},
+  define: {
+    __OTT_SESSION_ID__: JSON.stringify('ott-local-session'),
+  },
+
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:4174',
+        changeOrigin: true,
+      },
+    },
+  },
 });

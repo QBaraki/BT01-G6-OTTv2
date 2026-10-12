@@ -1,20 +1,24 @@
 import './style.css';
+import {showBotMode} from './bot-mode';
 import {newId} from './utils/id';
 import {at,legalMoves,icons,kinds,label,initialPieces,type Game,type Pos,type Player} from './game/engine';
 import {connectLobby,createRoom,joinRoom,leave,ready,submitMove,agreeRematch,surrender,type Lobby,type Room} from './multiplayer/room';
 
 const app=document.querySelector<HTMLDivElement>('#app')!;
+let botMode=false;
+window.addEventListener('ott-bot-home',()=>{botMode=false;render();});
 let lobby:Lobby|null=null,room:Room|null=null,selected:string|null=null;
 let name=localStorage.getItem('ott-name')||'',error='';
 let invitation=new URLSearchParams(location.search).get('room')?.toUpperCase()||'';
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const copy=(s:string)=>void navigator.clipboard.writeText(s);
 
-function render(){if(!lobby){app.innerHTML='<div class="loading">Đang kết nối danh sách phòng…</div>';return}if(room&&!room.listed()){room.close();room=null;error='Phòng đã đóng vì trận kết thúc và không còn đủ hai người chơi.';history.replaceState(null,'',location.pathname)}if(room)renderGame();else renderHome()}
+function render(){if(botMode)return;if(!lobby){app.innerHTML='<div class="loading">Đang kết nối danh sách phòng…</div>';return}if(room&&!room.listed()){room.close();room=null;error='Phòng đã đóng vì trận kết thúc và không còn đủ hai người chơi.';history.replaceState(null,'',location.pathname)}if(room)renderGame();else renderHome()}
 function getName(){const input=app.querySelector<HTMLInputElement>('#name');const value=input?.value.trim().slice(0,24)||'';if(!value){error='Vui lòng nhập tên của bạn';renderHome();return null}name=value;localStorage.setItem('ott-name',name);return name}
 function enter(code?:string){if(!lobby)return;const playerName=getName();if(!playerName)return;try{room=code?joinRoom(lobby,code,playerName,render):createRoom(lobby,playerName,render);selected=null;error='';history.replaceState(null,'',`?room=${room.code}`);render()}catch(e){error=e instanceof Error?e.message:String(e);renderHome()}}
 function renderHome(){if(!lobby)return;const rows=lobby.list().map(m=>{const count=Number(!!m.player1)+Number(!!m.player2);return `<div class="room-row"><div><b>${escape(m.code)}</b><small>${escape(m.name1||'Trống')} · ${escape(m.name2||'Trống')} · ${count}/2 · ${m.status==='WAITING'?'Đang chờ':m.status==='PLAYING'?'Đang chơi':'Đã xong'}</small></div><button data-room="${escape(m.code)}">Vào phòng</button></div>`}).join('');
- app.innerHTML=`<main class="home"><div class="brand">OTT<span>v2</span></div><p class="eyebrow">OẲN TÙ TÌ · CHIẾN THUẬT 9×9</p><h1>Chọn phòng.<br><em>Bắt đầu ván đấu.</em></h1><p class="intro">Tạo phòng mới, gửi mã cho bạn bè hoặc tham gia một phòng đang có.</p><div class="home-card"><label>TÊN CỦA BẠN<input id="name" maxlength="24" placeholder="Nhập tên hiển thị" value="${escape(name)}"></label><button id="create" class="primary">Tạo phòng mới <span>↗</span></button><div class="divider">HOẶC THAM GIA BẰNG MÃ</div><div class="join-row"><input id="code" maxlength="12" placeholder="Mã phòng" value="${escape(invitation)}"><button id="join">Tham gia</button></div><p class="error">${escape(error)}</p></div><section class="room-list"><p class="eyebrow">PHÒNG HIỆN CÓ · ${lobby.list().length}</p>${rows||'<p class="empty-rooms">Chưa có phòng nào. Hãy tạo phòng đầu tiên.</p>'}</section><div class="how"><b>LUẬT CHƠI</b><div><span>✊ thắng ✌️</span><span>✌️ thắng ✋</span><span>✋ thắng ✊</span></div><p>Mỗi lượt đi một ô theo tám hướng. Cùng loại không thể ăn nhau.</p></div></main>`;
+ app.innerHTML=`<main class="home"><div class="brand">OTT<span>v2</span></div><p class="eyebrow">OẲN TÙ TÌ · CHIẾN THUẬT 9×9</p><h1>Chọn phòng.<br><em>Bắt đầu ván đấu.</em></h1><p class="intro">Tạo phòng mới, gửi mã cho bạn bè hoặc tham gia một phòng đang có.</p><button id="bot-arena" class="primary" style="margin:16px 0">BOT ARENA · Đấu bot ↗</button><div class="home-card"><label>TÊN CỦA BẠN<input id="name" maxlength="24" placeholder="Nhập tên hiển thị" value="${escape(name)}"></label><button id="create" class="primary">Tạo phòng mới <span>↗</span></button><div class="divider">HOẶC THAM GIA BẰNG MÃ</div><div class="join-row"><input id="code" maxlength="12" placeholder="Mã phòng" value="${escape(invitation)}"><button id="join">Tham gia</button></div><p class="error">${escape(error)}</p></div><section class="room-list"><p class="eyebrow">PHÒNG HIỆN CÓ · ${lobby.list().length}</p>${rows||'<p class="empty-rooms">Chưa có phòng nào. Hãy tạo phòng đầu tiên.</p>'}</section><div class="how"><b>LUẬT CHƠI</b><div><span>✊ thắng ✌️</span><span>✌️ thắng ✋</span><span>✋ thắng ✊</span></div><p>Mỗi lượt đi một ô theo tám hướng. Cùng loại không thể ăn nhau.</p></div></main>`;
+ app.querySelector('#bot-arena')!.addEventListener('click',()=>{botMode=true;showBotMode();});
  app.querySelector('#create')!.addEventListener('click',()=>enter());
  app.querySelector('#join')!.addEventListener('click',()=>{const code=app.querySelector<HTMLInputElement>('#code')!.value.trim().toUpperCase();if(!code){error='Vui lòng nhập mã phòng';renderHome();return}enter(code)});
  app.querySelectorAll<HTMLButtonElement>('[data-room]').forEach(b=>b.addEventListener('click',()=>enter(b.dataset.room)));
