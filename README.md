@@ -56,6 +56,7 @@ playhtml không cung cấp transaction hay quyền điều khiển game trên se
 Bot Arena là chế độ mở rộng của game OTTv2, cho phép người chơi viết bot bằng JavaScript và cho hai bot tự động thi đấu với nhau.
 
 Các chức năng chính:
+
 - Nộp script JavaScript.
 - Kiểm tra cú pháp và phát hiện một số đoạn mã có nguy cơ gây hại.
 - Chạy script trong môi trường Docker Sandbox.

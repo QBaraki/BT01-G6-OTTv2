@@ -1,1 +1,7 @@
-{"id":"d8396eef-1e10-41f8-8e1f-1b94cefbffa0","name":"Bot A","source":"\nexport function getMove(state) {\n  const moves = state.legalMoves;\n\n  if (moves.length === 0) {\n    return null;\n  }\n\n  return moves[0];\n}\n","sha256":"4d2c3a04265aa5398b12d74067f60aac8626683641f564e964bed9799c9487ca","createdAt":"2026-10-12T10:47:16.754Z"}
+{
+  "id": "d8396eef-1e10-41f8-8e1f-1b94cefbffa0",
+  "name": "Bot A",
+  "source": "\nexport function getMove(state) {\n  const moves = state.legalMoves;\n\n  if (moves.length === 0) {\n    return null;\n  }\n\n  return moves[0];\n}\n",
+  "sha256": "4d2c3a04265aa5398b12d74067f60aac8626683641f564e964bed9799c9487ca",
+  "createdAt": "2026-10-12T10:47:16.754Z"
+}

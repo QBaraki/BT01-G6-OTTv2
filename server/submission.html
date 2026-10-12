@@ -1,3 +1,97 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OTT Bot Script Submission</title><style>body{font:16px system-ui;margin:2rem auto;max-width:840px;padding:0 1rem;background:#f8fafc;color:#18232f}label{display:block;font-weight:600;margin-top:1rem}input,textarea,select,button{box-sizing:border-box;padding:.65rem;font:inherit}input,textarea,select{width:100%;border:1px solid #abb4bf;border-radius:6px}textarea{min-height:260px;font-family:monospace}button{margin-top:1rem;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#e9eef3;padding:1rem;border-radius:6px}small{color:#4b5563}</style></head><body><h1>Bot Script Submission</h1><p>Gửi JavaScript để kiểm tra tĩnh. Script chỉ được thực thi trong Docker sandbox khi tạo trận đấu.</p><form id="submit"><label for="name">Tên bot</label><input id="name" maxlength="60" required><label for="file">File JavaScript (.js), tùy chọn</label><input id="file" type="file" accept=".js,text/javascript"><label for="source">Mã nguồn</label><textarea id="source" required spellcheck="false">export function getMove(state) {
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OTT Bot Script Submission</title>
+    <style>
+      body {
+        font: 16px system-ui;
+        margin: 2rem auto;
+        max-width: 840px;
+        padding: 0 1rem;
+        background: #f8fafc;
+        color: #18232f;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-top: 1rem;
+      }
+      input,
+      textarea,
+      select,
+      button {
+        box-sizing: border-box;
+        padding: 0.65rem;
+        font: inherit;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid #abb4bf;
+        border-radius: 6px;
+      }
+      textarea {
+        min-height: 260px;
+        font-family: monospace;
+      }
+      button {
+        margin-top: 1rem;
+        cursor: pointer;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        background: #e9eef3;
+        padding: 1rem;
+        border-radius: 6px;
+      }
+      small {
+        color: #4b5563;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Bot Script Submission</h1>
+    <p>
+      Gửi JavaScript để kiểm tra tĩnh. Script chỉ được thực thi trong Docker
+      sandbox khi tạo trận đấu.
+    </p>
+    <form id="submit">
+      <label for="name">Tên bot</label
+      ><input id="name" maxlength="60" required /><label for="file"
+        >File JavaScript (.js), tùy chọn</label
+      ><input id="file" type="file" accept=".js,text/javascript" /><label
+        for="source"
+        >Mã nguồn</label
+      ><textarea id="source" required spellcheck="false">
+export function getMove(state) {
   return state.legalMoves[0] ?? null;
-}</textarea><button type="submit">Gửi kiểm tra</button></form><h2>Kết quả</h2><pre id="result" aria-live="polite">Chưa gửi</pre><h2>Bot vs Bot</h2><p>Chọn hai script đã vượt qua kiểm tra tĩnh. Máy chạy server phải có Docker và image node:22-alpine.</p><label for="botA">Bot A</label><select id="botA"></select><label for="botB">Bot B</label><select id="botB"></select><button id="fight" type="button">Bắt đầu trận đấu</button><pre id="matchResult">Chưa đấu</pre><h2>50 log gần nhất</h2><button id="refresh" type="button">Tải lại log</button><pre id="logs">Chưa tải</pre><small>Kết quả PASSED chỉ có nghĩa qua được bộ quy tắc kiểm tra tĩnh; không chứng minh mã an toàn.</small><script src="/client.js" defer></script></body></html>
+}</textarea
+      ><button type="submit">Gửi kiểm tra</button>
+    </form>
+    <h2>Kết quả</h2>
+    <pre id="result" aria-live="polite">Chưa gửi</pre>
+    <h2>Bot vs Bot</h2>
+    <p>
+      Chọn hai script đã vượt qua kiểm tra tĩnh. Máy chạy server phải có Docker
+      và image node:22-alpine.
+    </p>
+    <label for="botA">Bot A</label
+    ><select id="botA"></select
+    ><label for="botB">Bot B</label
+    ><select id="botB"></select
+    ><button id="fight" type="button">Bắt đầu trận đấu</button>
+    <pre id="matchResult">Chưa đấu</pre>
+    <h2>50 log gần nhất</h2>
+    <button id="refresh" type="button">Tải lại log</button>
+    <pre id="logs">Chưa tải</pre>
+    <small
+      >Kết quả PASSED chỉ có nghĩa qua được bộ quy tắc kiểm tra tĩnh; không
+      chứng minh mã an toàn.</small
+    >
+    <script src="/client.js" defer></script>
+  </body>
+</html>

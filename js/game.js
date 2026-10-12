@@ -1,32 +1,17 @@
-import { playhtml }
-    from "https://unpkg.com/playhtml";
-
+import { playhtml } from "https://unpkg.com/playhtml";
 
 import {
-
-    SIZE,
-
-    TYPE_LABEL,
-
-    TYPE_ICON,
-
-    createInitialBoard,
-
-    indexOf,
-
-    isOneStep,
-
-    isGoal,
-
-    validateMove,
-
-    applyMove,
-
-    countPieces
-
+  SIZE,
+  TYPE_LABEL,
+  TYPE_ICON,
+  createInitialBoard,
+  indexOf,
+  isOneStep,
+  isGoal,
+  validateMove,
+  applyMove,
+  countPieces,
 } from "./rules.js";
-
-
 
 /*
  * Read Room ID from URL.
@@ -36,86 +21,54 @@ import {
  * game.html?room=ABC123
  */
 
-const params =
-    new URLSearchParams(
-        location.search
-    );
+const params = new URLSearchParams(location.search);
 
-
-const roomId =
-    params.get("room");
-
-
+const roomId = params.get("room");
 
 if (!roomId) {
+  location.href = "./index.html";
 
-    location.href =
-        "./index.html";
-
-    throw new Error(
-        "Missing Room ID"
-    );
-
+  throw new Error("Missing Room ID");
 }
-
-
 
 /*
  * Hidden element used as
  * shared PlayHTML game state.
  */
 
-const stateElement =
-    document.createElement(
-        "div"
-    );
+const stateElement = document.createElement("div");
 
-
-stateElement.id =
-    "game-state";
-
+stateElement.id = "game-state";
 
 stateElement.hidden = true;
 
-
-document.body.appendChild(
-    stateElement
-);
-
-
+document.body.appendChild(stateElement);
 
 /*
  * Initial shared state.
  */
 
 const initialState = {
+  version: 1,
 
-    version: 1,
+  roomId,
 
-    roomId,
+  players: {
+    1: null,
 
-    players: {
+    2: null,
+  },
 
-        1: null,
+  board: createInitialBoard(),
 
-        2: null
+  turn: 1,
 
-    },
+  winner: null,
 
-    board:
-        createInitialBoard(),
+  winReason: null,
 
-    turn: 1,
-
-    winner: null,
-
-    winReason: null,
-
-    moveNumber: 0
-
+  moveNumber: 0,
 };
-
-
 
 /*
  * Register shared game state.
@@ -124,25 +77,13 @@ const initialState = {
  * with the PlayHTML version installed.
  */
 
-await playhtml.register(
-    "game-state",
-    {
+await playhtml.register("game-state", {
+  defaultData: initialState,
 
-        defaultData:
-            initialState,
-
-
-        updateElement:
-            ({ data }) => {
-
-                render(data);
-
-            }
-
-    }
-);
-
-
+  updateElement: ({ data }) => {
+    render(data);
+  },
+});
 
 /*
  * IMPORTANT:
@@ -151,245 +92,120 @@ await playhtml.register(
  */
 
 await playhtml.init({
-
-    room:
-        `ottv2-game-${roomId}`
-
+  room: `ottv2-game-${roomId}`,
 });
 
-
 await playhtml.ready;
-
-
 
 /*
  * Handle for changing shared state.
  */
 
-const handle =
-    playhtml.getHandle(
-        "game-state"
-    );
-
-
+const handle = playhtml.getHandle("game-state");
 
 /*
  * Identify this browser's player.
  */
 
-const playerKey =
-    `ottv2-player-${roomId}`;
+const playerKey = `ottv2-player-${roomId}`;
 
+let myPlayer = Number(localStorage.getItem(playerKey));
 
-let myPlayer =
-    Number(
-        localStorage.getItem(
-            playerKey
-        )
-    );
-
-
-
-if (
-    ![1, 2].includes(
-        myPlayer
-    )
-) {
-
-    myPlayer = null;
-
+if (![1, 2].includes(myPlayer)) {
+  myPlayer = null;
 }
-
-
 
 /*
  * Try to occupy Player 1 or Player 2.
  */
 
 function claimPlayer() {
+  handle.setData((data) => {
+    const players = {
+      ...data.players,
+    };
 
-    handle.setData(
-        data => {
+    /*
+     * Existing player assignment.
+     */
 
-            const players = {
+    if (myPlayer && players[myPlayer]) {
+      return data;
+    }
 
-                ...data.players
+    /*
+     * Find empty player slot.
+     */
 
-            };
+    if (!players[1]) {
+      myPlayer = 1;
+    } else if (!players[2]) {
+      myPlayer = 2;
+    } else {
+      /*
+       * Both slots occupied.
+       *
+       * This browser becomes spectator.
+       */
 
+      myPlayer = 0;
+    }
 
+    /*
+     * Store persistent browser ID.
+     */
 
-            /*
-             * Existing player assignment.
-             */
+    if (myPlayer) {
+      localStorage.setItem(
+        playerKey,
 
-            if (
-                myPlayer &&
-                players[myPlayer]
-            ) {
+        String(myPlayer),
+      );
 
-                return data;
+      players[myPlayer] = crypto.randomUUID();
+    }
 
-            }
+    return {
+      ...data,
 
-
-
-            /*
-             * Find empty player slot.
-             */
-
-            if (
-                !players[1]
-            ) {
-
-                myPlayer = 1;
-
-            }
-
-            else if (
-                !players[2]
-            ) {
-
-                myPlayer = 2;
-
-            }
-
-            else {
-
-                /*
-                 * Both slots occupied.
-                 *
-                 * This browser becomes spectator.
-                 */
-
-                myPlayer = 0;
-
-            }
-
-
-
-            /*
-             * Store persistent browser ID.
-             */
-
-            if (
-                myPlayer
-            ) {
-
-                localStorage.setItem(
-
-                    playerKey,
-
-                    String(myPlayer)
-
-                );
-
-
-
-                players[myPlayer] =
-                    crypto.randomUUID();
-
-            }
-
-
-
-            return {
-
-                ...data,
-
-                players
-
-            };
-
-        }
-    );
-
+      players,
+    };
+  });
 }
 
-
-
 claimPlayer();
-
-
 
 /*
  * DOM references.
  */
 
-const boardEl =
-    document.getElementById(
-        "board"
-    );
+const boardEl = document.getElementById("board");
 
+const turnLabel = document.getElementById("turn-label");
 
-const turnLabel =
-    document.getElementById(
-        "turn-label"
-    );
+const statusLabel = document.getElementById("status-label");
 
+const p1State = document.getElementById("p1-state");
 
-const statusLabel =
-    document.getElementById(
-        "status-label"
-    );
+const p2State = document.getElementById("p2-state");
 
+const countsContent = document.getElementById("counts-content");
 
-const p1State =
-    document.getElementById(
-        "p1-state"
-    );
+const winBanner = document.getElementById("win-banner");
 
+const roomLabel = document.getElementById("room-label");
 
-const p2State =
-    document.getElementById(
-        "p2-state"
-    );
+const coordinatesX = document.getElementById("coordinates-x");
 
+roomLabel.textContent = `Room: ${roomId}`;
 
-const countsContent =
-    document.getElementById(
-        "counts-content"
-    );
+coordinatesX.innerHTML = "abcdefghi"
 
+  .split("")
 
-const winBanner =
-    document.getElementById(
-        "win-banner"
-    );
+  .map((x) => `<span>${x}</span>`)
 
-
-const roomLabel =
-    document.getElementById(
-        "room-label"
-    );
-
-
-const coordinatesX =
-    document.getElementById(
-        "coordinates-x"
-    );
-
-
-
-roomLabel.textContent =
-    `Room: ${roomId}`;
-
-
-
-coordinatesX.innerHTML =
-
-    "abcdefghi"
-
-        .split("")
-
-        .map(
-            x =>
-                `<span>${x}</span>`
-        )
-
-        .join("");
-
-
+  .join("");
 
 /*
  * Currently selected piece.
@@ -397,396 +213,186 @@ coordinatesX.innerHTML =
 
 let selected = null;
 
-
 /*
  * Latest shared state.
  */
 
 let currentState = null;
 
-
-
 /*
  * Render complete game.
  */
 
 function render(state) {
+  currentState = state;
 
-    currentState = state;
+  /*
+   * Clear old board.
+   */
 
+  boardEl.replaceChildren();
 
-    /*
-     * Clear old board.
-     */
+  /*
+   * Create 9x9 board.
+   */
 
-    boardEl.replaceChildren();
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const cell = document.createElement("button");
 
+      cell.className = "cell";
 
+      cell.type = "button";
 
-    /*
-     * Create 9x9 board.
-     */
+      cell.dataset.x = String(x);
 
-    for (
-        let y = 0;
-        y < SIZE;
-        y++
-    ) {
+      cell.dataset.y = String(y);
 
-        for (
-            let x = 0;
-            x < SIZE;
-            x++
-        ) {
+      /*
+       * Coordinate label.
+       */
 
-            const cell =
-                document.createElement(
-                    "button"
-                );
+      const coord = document.createElement("span");
 
+      coord.className = "coord";
 
-            cell.className =
-                "cell";
+      coord.textContent = `${"abcdefghi"[x]}${y + 1}`;
 
+      cell.appendChild(coord);
 
-            cell.type =
-                "button";
+      /*
+       * Goal squares.
+       */
 
+      if (isGoal(x, y)) {
+        cell.classList.add("goal");
+      }
 
-            cell.dataset.x =
-                String(x);
+      /*
+       * Selected piece.
+       */
 
+      if (selected && selected.x === x && selected.y === y) {
+        cell.classList.add("selected");
+      }
 
-            cell.dataset.y =
-                String(y);
+      /*
+       * Show valid moves.
+       */
 
+      if (
+        selected &&
+        myPlayer &&
+        isOneStep(
+          selected,
 
+          { x, y },
+        )
+      ) {
+        const test = validateMove(
+          state,
 
-            /*
-             * Coordinate label.
-             */
+          myPlayer,
 
-            const coord =
-                document.createElement(
-                    "span"
-                );
+          selected,
 
+          { x, y },
+        );
 
-            coord.className =
-                "coord";
-
-
-            coord.textContent =
-                `${"abcdefghi"[x]}${y + 1}`;
-
-
-            cell.appendChild(
-                coord
-            );
-
-
-
-            /*
-             * Goal squares.
-             */
-
-            if (
-                isGoal(x, y)
-            ) {
-
-                cell.classList.add(
-                    "goal"
-                );
-
-            }
-
-
-
-            /*
-             * Selected piece.
-             */
-
-            if (
-
-                selected &&
-
-                selected.x === x &&
-
-                selected.y === y
-
-            ) {
-
-                cell.classList.add(
-                    "selected"
-                );
-
-            }
-
-
-
-            /*
-             * Show valid moves.
-             */
-
-            if (
-
-                selected &&
-
-                myPlayer &&
-
-                isOneStep(
-
-                    selected,
-
-                    { x, y }
-
-                )
-
-            ) {
-
-                const test =
-                    validateMove(
-
-                        state,
-
-                        myPlayer,
-
-                        selected,
-
-                        { x, y }
-
-                    );
-
-
-                if (test.ok) {
-
-                    cell.classList.add(
-                        "valid"
-                    );
-
-                }
-
-            }
-
-
-
-            /*
-             * Draw piece.
-             */
-
-            const piece =
-                state.board[
-                    indexOf(x, y)
-                ];
-
-
-
-            if (piece) {
-
-                const pieceEl =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                pieceEl.className =
-                    `piece p${piece.player}`;
-
-
-                pieceEl.textContent =
-                    TYPE_ICON[
-                        piece.type
-                    ];
-
-
-                pieceEl.title =
-
-                    `Player ${piece.player}` +
-
-                    ` - ` +
-
-                    TYPE_LABEL[
-                        piece.type
-                    ];
-
-
-                cell.appendChild(
-                    pieceEl
-                );
-
-            }
-
-
-
-            /*
-             * Click handler.
-             */
-
-            cell.addEventListener(
-                "click",
-                () => {
-
-                    onCellClick(
-                        x,
-                        y
-                    );
-
-                }
-            );
-
-
-            boardEl.appendChild(
-                cell
-            );
-
+        if (test.ok) {
+          cell.classList.add("valid");
         }
+      }
 
+      /*
+       * Draw piece.
+       */
+
+      const piece = state.board[indexOf(x, y)];
+
+      if (piece) {
+        const pieceEl = document.createElement("div");
+
+        pieceEl.className = `piece p${piece.player}`;
+
+        pieceEl.textContent = TYPE_ICON[piece.type];
+
+        pieceEl.title =
+          `Player ${piece.player}` + ` - ` + TYPE_LABEL[piece.type];
+
+        cell.appendChild(pieceEl);
+      }
+
+      /*
+       * Click handler.
+       */
+
+      cell.addEventListener("click", () => {
+        onCellClick(x, y);
+      });
+
+      boardEl.appendChild(cell);
     }
+  }
 
+  /*
+   * Turn.
+   */
 
+  if (state.winner) {
+    turnLabel.textContent = `Player ${state.winner} thắng`;
+  } else {
+    turnLabel.textContent = `Player ${state.turn}`;
+  }
 
-    /*
-     * Turn.
-     */
+  /*
+   * Status.
+   */
 
-    if (state.winner) {
+  if (state.winner) {
+    statusLabel.textContent = state.winReason;
+  } else if (myPlayer === 0) {
+    statusLabel.textContent = "Spectator";
+  } else if (state.turn === myPlayer) {
+    statusLabel.textContent = "Đến lượt bạn";
+  } else {
+    statusLabel.textContent = "Đang chờ đối thủ";
+  }
 
-        turnLabel.textContent =
-            `Player ${state.winner} thắng`;
+  /*
+   * Players.
+   */
 
-    }
+  p1State.textContent = state.players[1] ? "Đã tham gia" : "Đang chờ...";
 
-    else {
+  p2State.textContent = state.players[2] ? "Đã tham gia" : "Đang chờ...";
 
-        turnLabel.textContent =
-            `Player ${state.turn}`;
+  renderCounts(state);
 
-    }
+  /*
+   * Winner overlay.
+   */
 
+  if (state.winner) {
+    winBanner.textContent =
+      `Player ${state.winner}` + ` thắng — ` + state.winReason;
 
-
-    /*
-     * Status.
-     */
-
-    if (state.winner) {
-
-        statusLabel.textContent =
-            state.winReason;
-
-    }
-
-    else if (
-        myPlayer === 0
-    ) {
-
-        statusLabel.textContent =
-            "Spectator";
-
-    }
-
-    else if (
-        state.turn === myPlayer
-    ) {
-
-        statusLabel.textContent =
-            "Đến lượt bạn";
-
-    }
-
-    else {
-
-        statusLabel.textContent =
-            "Đang chờ đối thủ";
-
-    }
-
-
-
-    /*
-     * Players.
-     */
-
-    p1State.textContent =
-
-        state.players[1]
-
-            ? "Đã tham gia"
-
-            : "Đang chờ...";
-
-
-    p2State.textContent =
-
-        state.players[2]
-
-            ? "Đã tham gia"
-
-            : "Đang chờ...";
-
-
-
-    renderCounts(state);
-
-
-
-    /*
-     * Winner overlay.
-     */
-
-    if (
-        state.winner
-    ) {
-
-        winBanner.textContent =
-
-            `Player ${state.winner}` +
-
-            ` thắng — ` +
-
-            state.winReason;
-
-
-        winBanner.classList.remove(
-            "hidden"
-        );
-
-    }
-
-    else {
-
-        winBanner.classList.add(
-            "hidden"
-        );
-
-    }
-
+    winBanner.classList.remove("hidden");
+  } else {
+    winBanner.classList.add("hidden");
+  }
 }
-
-
 
 /*
  * Display remaining pieces.
  */
 
 function renderCounts(state) {
+  const p1 = countPieces(state.board, 1);
 
-    const p1 =
-        countPieces(
-            state.board,
-            1
-        );
+  const p2 = countPieces(state.board, 2);
 
-
-    const p2 =
-        countPieces(
-            state.board,
-            2
-        );
-
-
-
-    countsContent.innerHTML = `
+  countsContent.innerHTML = `
 
         <div class="count-row">
 
@@ -869,272 +475,148 @@ function renderCounts(state) {
         </div>
 
     `;
-
 }
-
-
 
 /*
  * Handle board click.
  */
 
-function onCellClick(
-    x,
-    y
-) {
+function onCellClick(x, y) {
+  /*
+   * Spectator.
+   */
 
+  if (!currentState || myPlayer === 0) {
+    return;
+  }
+
+  /*
+   * Game finished.
+   */
+
+  if (currentState.winner) {
+    return;
+  }
+
+  const piece = currentState.board[indexOf(x, y)];
+
+  /*
+   * We already selected a piece.
+   */
+
+  if (selected) {
     /*
-     * Spectator.
+     * Click same piece:
+     * deselect.
      */
 
-    if (
-        !currentState ||
-        myPlayer === 0
-    ) {
+    if (selected.x === x && selected.y === y) {
+      selected = null;
 
-        return;
+      render(currentState);
 
+      return;
     }
 
-
-
     /*
-     * Game finished.
+     * Validate destination.
      */
 
-    if (
-        currentState.winner
-    ) {
+    const check = validateMove(
+      currentState,
 
-        return;
+      myPlayer,
 
-    }
+      selected,
 
-
-
-    const piece =
-        currentState.board[
-            indexOf(x, y)
-        ];
-
-
+      { x, y },
+    );
 
     /*
-     * We already selected a piece.
+     * Invalid.
      */
 
-    if (selected) {
-
-        /*
-         * Click same piece:
-         * deselect.
-         */
-
-        if (
-
-            selected.x === x &&
-
-            selected.y === y
-
-        ) {
-
-            selected = null;
-
-            render(
-                currentState
-            );
-
-            return;
-
-        }
-
-
-
-        /*
-         * Validate destination.
-         */
-
-        const check =
-            validateMove(
-
-                currentState,
-
-                myPlayer,
-
-                selected,
-
-                { x, y }
-
-            );
-
-
-
-        /*
-         * Invalid.
-         */
-
-        if (!check.ok) {
-
-            /*
-             * Selecting another own piece.
-             */
-
-            if (
-                piece &&
-                piece.player === myPlayer
-            ) {
-
-                selected = {
-
-                    x,
-
-                    y
-
-                };
-
-
-                render(
-                    currentState
-                );
-
-            }
-
-            else {
-
-                alert(
-                    check.reason
-                );
-
-            }
-
-
-            return;
-
-        }
-
-
-
-        /*
-         * Valid move.
-         *
-         * Re-read shared state
-         * immediately before applying.
-         */
-
-        handle.setData(
-            data => {
-
-                const result =
-                    applyMove(
-
-                        data,
-
-                        myPlayer,
-
-                        selected,
-
-                        { x, y }
-
-                    );
-
-
-                if (
-                    result.result.ok
-                ) {
-
-                    return result.state;
-
-                }
-
-
-                return data;
-
-            }
-        );
-
-
-
-        selected = null;
-
-        return;
-
-    }
-
-
-
-    /*
-     * Nothing selected yet.
-     *
-     * Select own piece.
-     */
-
-    if (
-
-        piece &&
-
-        piece.player === myPlayer
-
-    ) {
-
+    if (!check.ok) {
+      /*
+       * Selecting another own piece.
+       */
+
+      if (piece && piece.player === myPlayer) {
         selected = {
+          x,
 
-            x,
-
-            y
-
+          y,
         };
 
+        render(currentState);
+      } else {
+        alert(check.reason);
+      }
 
-        render(
-            currentState
-        );
-
+      return;
     }
 
+    /*
+     * Valid move.
+     *
+     * Re-read shared state
+     * immediately before applying.
+     */
+
+    handle.setData((data) => {
+      const result = applyMove(
+        data,
+
+        myPlayer,
+
+        selected,
+
+        { x, y },
+      );
+
+      if (result.result.ok) {
+        return result.state;
+      }
+
+      return data;
+    });
+
+    selected = null;
+
+    return;
+  }
+
+  /*
+   * Nothing selected yet.
+   *
+   * Select own piece.
+   */
+
+  if (piece && piece.player === myPlayer) {
+    selected = {
+      x,
+
+      y,
+    };
+
+    render(currentState);
+  }
 }
-
-
 
 /*
  * Copy room URL.
  */
 
-document
-    .getElementById(
-        "copy-link"
-    )
-    .addEventListener(
-        "click",
-        async () => {
+document.getElementById("copy-link").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(location.href);
 
-            await navigator.clipboard
-                .writeText(
-                    location.href
-                );
-
-            alert(
-                "Đã copy link phòng."
-            );
-
-        }
-    );
-
-
+  alert("Đã copy link phòng.");
+});
 
 /*
  * Back to lobby.
  */
 
-document
-    .getElementById(
-        "back-lobby"
-    )
-    .addEventListener(
-        "click",
-        () => {
-
-            location.href =
-                "./index.html";
-
-        }
-    );
+document.getElementById("back-lobby").addEventListener("click", () => {
+  location.href = "./index.html";
+});

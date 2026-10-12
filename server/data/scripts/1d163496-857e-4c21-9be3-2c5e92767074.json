@@ -1,0 +1,7 @@
+{
+  "id": "1d163496-857e-4c21-9be3-2c5e92767074",
+  "name": "adada",
+  "source": "export function getMove(state) {\n  return state.legalMoves[0] ?? null;\n}",
+  "sha256": "f9aa579cfede73bd4e3eb6cacb13168d5733c7e202171edb234748132d2637da",
+  "createdAt": "2026-10-12T14:05:32.549Z"
+}
