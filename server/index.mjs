@@ -82,12 +82,16 @@ const server = createServer(async (req, res) => {
         typeof body?.name !== "string" ||
         body.name.trim().length < 1 ||
         body.name.length > 60 ||
-        typeof body?.source !== "string"
+        typeof body?.source !== "string" ||
+        (body.language !== undefined &&
+          !["javascript", "python", "c"].includes(body.language))
       )
         return json(res, 400, {
-          error: "name (1..60) and source (string) are required",
+          error:
+            "name (1..60), source (string), and a supported language are required",
         });
-      const scan = scanScript(body.source);
+      const language = body.language ?? "javascript";
+      const scan = scanScript(body.source, language);
       const scriptId = randomUUID();
       if (scan.status === "PASSED")
         await scripts.save(
@@ -95,11 +99,13 @@ const server = createServer(async (req, res) => {
           body.name.trim(),
           body.source,
           store.hash(body.source),
+          language,
         );
       const record = await store.append({
         kind: "SCRIPT_SCAN",
         scriptId,
         name: body.name.trim(),
+        language,
         sha256: store.hash(body.source),
         sizeBytes: Buffer.byteLength(body.source, "utf8"),
         status: scan.status,
@@ -144,7 +150,7 @@ const server = createServer(async (req, res) => {
         return json(res, 400, { error: "maxTurns must be 1..200" });
       matchBusy = true;
       try {
-        const result = await fightScripts(a, b, { maxTurns, timeoutMs: 5000 });
+        const result = await fightScripts(a, b, { maxTurns, timeoutMs: 10000 });
         const { game, ...publicResult } = result;
         const record = await store.append({
           kind: "BOT_MATCH",

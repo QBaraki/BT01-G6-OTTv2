@@ -1,19 +1,64 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const worker = await readFile(
   join(dirname(fileURLToPath(import.meta.url)), "sandbox-worker.cjs"),
   "utf8",
 );
-const IMAGE = process.env.BOT_DOCKER_IMAGE || "node:22-alpine";
+const pythonWorker = await readFile(
+  join(dirname(fileURLToPath(import.meta.url)), "sandbox-python-worker.py"),
+  "utf8",
+);
+const IMAGES = {
+  javascript: process.env.BOT_DOCKER_IMAGE || "node:22-alpine",
+  python: process.env.BOT_PYTHON_DOCKER_IMAGE || "python:3.13-alpine",
+  c: process.env.BOT_C_DOCKER_IMAGE || "gcc:14",
+};
+const dockerCli =
+  process.env.BOT_DOCKER_CLI ||
+  (process.platform === "win32"
+    ? join(
+        process.env.ProgramFiles || "C:\\Program Files",
+        "Docker",
+        "Docker",
+        "resources",
+        "bin",
+        "docker.exe",
+      )
+    : "docker");
+const dockerEnv = {
+  PATH: [
+    process.platform === "win32" ? dirname(dockerCli) : "",
+    process.env.PATH || process.env.Path || "/usr/bin:/bin",
+  ]
+    .filter(Boolean)
+    .join(delimiter),
+  ...(process.platform === "win32"
+    ? {
+        ...(process.env.USERPROFILE
+          ? { USERPROFILE: process.env.USERPROFILE }
+          : {}),
+        ...(process.env.APPDATA ? { APPDATA: process.env.APPDATA } : {}),
+        ...(process.env.LOCALAPPDATA
+          ? { LOCALAPPDATA: process.env.LOCALAPPDATA }
+          : {}),
+        ...(process.env.SYSTEMROOT
+          ? { SYSTEMROOT: process.env.SYSTEMROOT }
+          : {}),
+      }
+    : {}),
+};
 const MAX_OUTPUT = 16 * 1024;
 
-export async function runSandboxedMove(source, snapshot, timeoutMs = 2500) {
+export async function runSandboxedMove(bot, snapshot, timeoutMs = 2500) {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 10000)
     throw Error("Invalid timeout");
+  const language = bot.language || "javascript";
+  if (!Object.hasOwn(IMAGES, language))
+    throw Error(`Unsupported bot language: ${language}`);
   const name = `ott-bot-${randomUUID()}`;
   const args = [
     "run",
@@ -40,16 +85,35 @@ export async function runSandboxedMove(source, snapshot, timeoutMs = 2500) {
     "65534:65534",
     "--tmpfs",
     "/tmp:rw,noexec,nosuid,size=1m",
-    IMAGE,
-    "node",
-    "-e",
-    worker,
+    "--tmpfs",
+    "/work:rw,exec,nosuid,size=8m,uid=65534,gid=65534,mode=700",
+    IMAGES[language],
   ];
-  const input = JSON.stringify({ source, snapshot });
+  if (language === "javascript")
+    args.push("node", "-e", worker);
+  else if (language === "python")
+    args.push("python3", "-c", pythonWorker);
+  else
+    args.push(
+      "sh",
+      "-c",
+      "printf '%s' \"$OTT_BOT_SOURCE\" | base64 -d > /work/bot.c && gcc -O2 -std=c11 -o /work/bot /work/bot.c && exec /work/bot",
+    );
+  if (language === "c")
+    args.splice(
+      args.length - 4,
+      0,
+      "--env",
+      `OTT_BOT_SOURCE=${Buffer.from(bot.source, "utf8").toString("base64")}`,
+    );
+  const input =
+    language === "c"
+      ? JSON.stringify(snapshot)
+      : JSON.stringify({ source: bot.source, snapshot });
   return await new Promise((resolve, reject) => {
-    const child = spawn("docker", args, {
+    const child = spawn(dockerCli, args, {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: process.env.PATH || "/usr/bin:/bin" },
+      env: dockerEnv,
       windowsHide: true,
     });
     let output = "",
@@ -66,8 +130,9 @@ export async function runSandboxedMove(source, snapshot, timeoutMs = 2500) {
     };
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
-      const remove = spawn("docker", ["rm", "-f", name], {
+      const remove = spawn(dockerCli, ["rm", "-f", name], {
         stdio: "ignore",
+        env: dockerEnv,
         windowsHide: true,
       });
       remove.on("error", () => {});
@@ -80,8 +145,9 @@ export async function runSandboxedMove(source, snapshot, timeoutMs = 2500) {
       output += chunk.toString();
       if (output.length > MAX_OUTPUT) {
         child.kill("SIGKILL");
-        const remove = spawn("docker", ["rm", "-f", name], {
+        const remove = spawn(dockerCli, ["rm", "-f", name], {
           stdio: "ignore",
+          env: dockerEnv,
           windowsHide: true,
         });
         remove.on("error", () => {});
@@ -95,6 +161,13 @@ export async function runSandboxedMove(source, snapshot, timeoutMs = 2500) {
       if (done) return;
       try {
         const result = JSON.parse(output.trim());
+        if (language === "c") {
+          if (code !== 0) throw Error(`C bot exited with status ${code}`);
+          done = true;
+          cleanup();
+          resolve(result);
+          return;
+        }
         if (!result.ok) throw Error(`Bot error: ${result.error}`);
         done = true;
         cleanup();

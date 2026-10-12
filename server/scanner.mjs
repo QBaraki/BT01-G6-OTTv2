@@ -44,7 +44,7 @@ const forbiddenImports = new Set([
   "node:https",
 ]);
 
-export function scanScript(code) {
+export function scanScript(code, language = "javascript") {
   const issues = [];
   if (typeof code !== "string")
     return {
@@ -53,6 +53,42 @@ export function scanScript(code) {
         { rule: "INPUT_TYPE", message: "Script must be a string", line: 0 },
       ],
     };
+  if (!["javascript", "python", "c"].includes(language))
+    return {
+      status: "REJECTED",
+      issues: [
+        { rule: "LANGUAGE", message: "Unsupported bot language", line: 0 },
+      ],
+    };
+  if (language !== "javascript") {
+    const maxBytes = language === "c" ? 16 * 1024 : MAX_SCRIPT_BYTES;
+    if (Buffer.byteLength(code, "utf8") > maxBytes)
+      issues.push({
+        rule: "SIZE",
+        message: `Script exceeds ${maxBytes / 1024} KiB`,
+        line: 0,
+      });
+    if (!code.trim())
+      issues.push({ rule: "EMPTY", message: "Script is empty", line: 0 });
+    const entryPoint =
+      language === "python"
+        ? /^\s*def\s+get_move\s*\(/m
+        : /\bmain\s*\(/;
+    if (!entryPoint.test(code))
+      issues.push({
+        rule: "BOT_INTERFACE",
+        message:
+          language === "python"
+            ? "Required function get_move(state) not found"
+            : "Required C entry point main() not found",
+        line: 0,
+      });
+    return {
+      status: issues.length ? "REJECTED" : "PASSED",
+      issues: issues.slice(0, 100),
+      scannerVersion: `${language}-static-v1`,
+    };
+  }
   if (Buffer.byteLength(code, "utf8") > MAX_SCRIPT_BYTES)
     issues.push({ rule: "SIZE", message: "Script exceeds 64 KiB", line: 0 });
   if (!code.trim())

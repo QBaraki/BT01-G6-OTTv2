@@ -55,12 +55,12 @@ playhtml không cung cấp transaction hay quyền điều khiển game trên se
 
 ## 1. Giới thiệu
 
-Bot Arena là chế độ mở rộng của game OTTv2, cho phép người chơi viết bot bằng JavaScript và cho hai bot tự động thi đấu với nhau.
+Bot Arena là chế độ mở rộng của game OTTv2, cho phép người chơi viết bot bằng JavaScript, Python hoặc C để hai bot tự động thi đấu với nhau.
 
 Các chức năng chính:
 
-- Nộp script JavaScript.
-- Kiểm tra cú pháp và phát hiện một số đoạn mã có nguy cơ gây hại.
+- Nộp bot JavaScript, Python hoặc C.
+- Kiểm tra giao diện bot và kích thước mã nguồn.
 - Chạy script trong môi trường Docker Sandbox.
 - Tổ chức trận đấu Bot vs Bot.
 - Hiển thị người thắng, lịch sử nước đi và phát lại trận đấu trên bàn cờ 9×9.
@@ -75,6 +75,8 @@ Mở Terminal trong thư mục dự án, chạy:
 ```bash
 npm install
 docker pull node:22-alpine
+docker pull python:3.13-alpine
+docker pull gcc:14
 npm run dev:all
 ```
 
@@ -85,7 +87,7 @@ Lưu ý: Docker Desktop phải đang hoạt động.
 ## 3. Cách sử dụng Bot Arena
 
 1. Mở game và chọn chế độ **Bot Arena**.
-2. Nhập tên bot và tải lên hoặc dán script JavaScript.
+2. Nhập tên bot, chọn ngôn ngữ, sau đó tải file `.js`, `.py`, `.c` hoặc dán mã nguồn.
 3. Gửi script để hệ thống kiểm tra.
 4. Nếu kết quả là `PASSED`, bot có thể được chọn để thi đấu.
 5. Chọn Bot A và Bot B, sau đó nhấn **Bắt đầu trận đấu**.
@@ -93,7 +95,9 @@ Lưu ý: Docker Desktop phải đang hoạt động.
 
 ## 4. Ví dụ script bot
 
-Bot phải cung cấp hàm `getMove(state)` để lựa chọn nước đi.
+Mỗi lượt bot nhận một snapshot JSON qua giao thức của ngôn ngữ đó. Snapshot có `player`, `turn`, `version`, `pieces` và `legalMoves`. Kết quả cần chứa `pieceId` và tọa độ đích `to.row`, `to.col`; server kiểm tra nước đi bằng engine trước khi áp dụng.
+
+API bot, snapshot mẫu và các file bot tối giản có thể tải lên nằm trong `server/examples/bots/bot-api.md`, `server/examples/bots/snapshot.example.json`, `server/examples/bots/api.js`, `server/examples/bots/api.py` và `server/examples/bots/api.c`. Bot chiến thuật mẫu nằm trong các file `tactical.*`; chúng ưu tiên ăn quân hợp lệ, sau đó chọn nước tiến gần mục tiêu. Các bot chiến thuật cũng đã được đăng ký trong dữ liệu Bot Arena của môi trường hiện tại.
 
 ```javascript
 export function getMove(state) {
@@ -105,7 +109,44 @@ export function getMove(state) {
 }
 ```
 
-Script trên luôn chọn nước đi hợp lệ đầu tiên.
+Bot JavaScript phải export `getMove(state)`. Bot Python định nghĩa `get_move(state)`:
+
+```python
+def get_move(state):
+    if not state["legalMoves"]:
+        return None
+    return state["legalMoves"][0]
+```
+
+Bot C đọc snapshot JSON từ stdin và in một object quyết định JSON ra stdout. Ví dụ sau chọn nước hợp lệ đầu tiên từ JSON snapshot chuẩn của Bot Arena:
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    char input[131072], pieceId[64];
+    int row, col;
+    size_t length = fread(input, 1, sizeof(input) - 1, stdin);
+    input[length] = '\0';
+
+    const char *moves = strstr(input, "\"legalMoves\":[");
+    if (!moves) return 1;
+    moves += strlen("\"legalMoves\":[");
+    const char *piece = strstr(moves, "\"pieceId\":\"");
+    const char *to = strstr(moves, "\"to\":{\"row\":");
+    if (!piece || !to ||
+        sscanf(piece, "\"pieceId\":\"%63[^\"]\"", pieceId) != 1 ||
+        sscanf(to, "\"to\":{\"row\":%d,\"col\":%d}", &row, &col) != 2)
+        return 1;
+
+    printf("{\"pieceId\":\"%s\",\"to\":{\"row\":%d,\"col\":%d}}\n",
+           pieceId, row, col);
+    return 0;
+}
+```
+
+Python/C entry-point and size checks do not guarantee valid syntax; compilation/execution errors forfeit that bot's turn. C submissions are limited to 16 KiB because their source is passed into the isolated compiler container.
 
 ## 5. Kiểm tra bảo mật
 
@@ -126,6 +167,8 @@ Lưu ý: Kiểm tra tĩnh không đảm bảo phát hiện mọi mã độc. Scr
 
 ## 7. Hạn chế hiện tại
 
-- Chỉ hỗ trợ bot viết bằng JavaScript.
+- JavaScript chạy bằng Node.js; Python chạy bằng Python; C được biên dịch bằng GCC trong các container riêng, cách ly.
+- Mỗi ngôn ngữ cần image Docker tương ứng: `node:22-alpine`, `python:3.13-alpine`, `gcc:14`.
+- Giới hạn source JavaScript/Python là 64 KiB; C là 16 KiB. Mỗi lượt chịu giới hạn thời gian, bộ nhớ, CPU, output và không có mạng.
 - Trận đấu được xử lý trước khi hiển thị replay.
 - Hệ thống hiện phù hợp để thử nghiệm cục bộ, chưa sẵn sàng triển khai công khai.

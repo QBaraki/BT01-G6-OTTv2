@@ -43,7 +43,7 @@ export async function fightScripts(
     let decision;
     try {
       decision = await runSandboxedMove(
-        bot.source,
+        bot,
         engine.botSnapshot(game),
         timeoutMs,
       );

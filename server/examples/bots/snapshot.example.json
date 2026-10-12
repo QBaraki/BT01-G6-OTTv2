@@ -1,0 +1,31 @@
+{
+  "player": 1,
+  "turn": 1,
+  "version": 1,
+  "pieces": [
+    {
+      "id": "p1-0",
+      "owner": 1,
+      "type": "rock",
+      "position": { "row": 1, "col": 0 }
+    },
+    {
+      "id": "p2-0",
+      "owner": 2,
+      "type": "scissors",
+      "position": { "row": 2, "col": 1 }
+    }
+  ],
+  "legalMoves": [
+    {
+      "pieceId": "p1-0",
+      "from": { "row": 1, "col": 0 },
+      "to": { "row": 2, "col": 1 }
+    },
+    {
+      "pieceId": "p1-0",
+      "from": { "row": 1, "col": 0 },
+      "to": { "row": 2, "col": 0 }
+    }
+  ]
+}

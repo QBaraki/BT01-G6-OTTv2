@@ -4,12 +4,13 @@ const idPattern = /^[0-9a-f-]{36}$/i;
 export function createScriptRepository(root) {
   const dir = join(root, "scripts");
   return {
-    async save(id, name, source, sha256) {
+    async save(id, name, source, sha256, language = "javascript") {
       if (!idPattern.test(id)) throw Error("Invalid script ID");
       await mkdir(dir, { recursive: true, mode: 0o700 });
       const record = {
         id,
         name,
+        language,
         source,
         sha256,
         createdAt: new Date().toISOString(),
@@ -18,7 +19,7 @@ export function createScriptRepository(root) {
         flag: "wx",
         mode: 0o600,
       });
-      return { id, name, sha256, createdAt: record.createdAt };
+      return { id, name, language, sha256, createdAt: record.createdAt };
     },
     async get(id) {
       if (!idPattern.test(id)) return null;
@@ -39,7 +40,7 @@ export function createScriptRepository(root) {
             const { source, ...rest } = JSON.parse(
               await readFile(join(dir, file), "utf8"),
             );
-            return rest;
+            return { language: "javascript", ...rest };
           }),
         );
         return result.reverse();

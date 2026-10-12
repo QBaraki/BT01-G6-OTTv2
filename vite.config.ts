@@ -1,8 +1,12 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   define: {
     __OTT_SESSION_ID__: JSON.stringify("ott-local-session"),
+  },
+
+  test: {
+    include: ["tests/**/*.test.ts"],
   },
 
   server: {
