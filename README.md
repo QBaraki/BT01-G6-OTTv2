@@ -41,7 +41,7 @@ A[Click quân] --> B[Chọn ô] --> C[Validate] --> D[Update state] --> E[Synchr
 
 `src/game/variants/types.ts` định nghĩa cấu trúc biến thể; `src/game/variants/classic.ts` và `src/game/variants/large-board.ts` chứa cấu hình bàn, đội hình, cách di chuyển, quân cờ và điều kiện thắng. Đăng ký biến thể mới trong `src/game/variants/index.ts`. `src/game/engine.ts` áp dụng cấu hình đó; trạng thái trận lưu mã và phiên bản biến thể để đồng bộ với người chơi/replay. Khi thêm biến thể, bổ sung test trong `tests/engine.test.ts`.
 
-`src/multiplayer/room.ts` quản lý danh sách phòng, kênh game và presence; `src/main.ts` dựng giao diện theo biến thể của phòng. Bot Arena backend hiện vẫn dùng engine riêng với luật 9×9. Build bằng `npm run build`, đưa `dist/` lên Vercel hoặc Netlify. Muốn chơi qua Internet, cả hai dùng cùng URL HTTPS sau khi triển khai.
+`src/multiplayer/room.ts` quản lý danh sách phòng, kênh game và presence; `src/main.ts` dựng giao diện theo biến thể của phòng. Bot Arena cho phép chọn bàn 9×9 hoặc 10×10; snapshot gửi cho bot bao gồm biến thể, kích thước bàn và góc đích. Build bằng `npm run build`, đưa `dist/` lên Vercel hoặc Netlify. Muốn chơi qua Internet, cả hai dùng cùng URL HTTPS sau khi triển khai.
 
 ## Kiểm thử multiplayer
 
@@ -63,7 +63,7 @@ Các chức năng chính:
 - Kiểm tra giao diện bot và kích thước mã nguồn.
 - Chạy script trong môi trường Docker Sandbox.
 - Tổ chức trận đấu Bot vs Bot.
-- Hiển thị người thắng, lịch sử nước đi và phát lại trận đấu trên bàn cờ 9×9.
+- Hiển thị người thắng, lịch sử nước đi và phát lại trận đấu trên bàn cờ 9×9 hoặc 10×10.
 - Lưu log kiểm tra script và trận đấu.
 
 ## 2. Cài đặt và khởi động
@@ -95,7 +95,7 @@ Lưu ý: Docker Desktop phải đang hoạt động.
 
 ## 4. Ví dụ script bot
 
-Mỗi lượt bot nhận một snapshot JSON qua giao thức của ngôn ngữ đó. Snapshot có `player`, `turn`, `version`, `pieces` và `legalMoves`. Kết quả cần chứa `pieceId` và tọa độ đích `to.row`, `to.col`; server kiểm tra nước đi bằng engine trước khi áp dụng.
+Mỗi lượt bot nhận một snapshot JSON qua giao thức của ngôn ngữ đó. Snapshot có `player`, `turn`, `version`, `variantId`, `board`, `goal`, `pieces` và `legalMoves`. Kết quả cần chứa `pieceId` và tọa độ đích `to.row`, `to.col`; server kiểm tra nước đi bằng engine trước khi áp dụng.
 
 API bot, snapshot mẫu và các file bot tối giản có thể tải lên nằm trong `server/examples/bots/bot-api.md`, `server/examples/bots/snapshot.example.json`, `server/examples/bots/api.js`, `server/examples/bots/api.py` và `server/examples/bots/api.c`. Bot chiến thuật mẫu nằm trong các file `tactical.*`; chúng ưu tiên ăn quân hợp lệ, sau đó chọn nước tiến gần mục tiêu. Các bot chiến thuật cũng đã được đăng ký trong dữ liệu Bot Arena của môi trường hiện tại.
 

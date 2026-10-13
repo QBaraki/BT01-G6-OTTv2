@@ -48,8 +48,14 @@ int main(void) {
         return 1;
     }
 
-    const int goal_row = player == 1 ? 8 : 0;
-    const int goal_col = player == 1 ? 8 : 0;
+    int goal_row = player == 1 ? 8 : 0;
+    int goal_col = player == 1 ? 8 : 0;
+    char *goal_field = strstr(input, "\"goal\":{\"row\":");
+    if (goal_field &&
+        sscanf(goal_field, "\"goal\":{\"row\":%d,\"col\":%d",
+               &goal_row, &goal_col) != 2) {
+        return 1;
+    }
     moves += strlen("\"legalMoves\":[");
 
     char best_piece[64] = "";

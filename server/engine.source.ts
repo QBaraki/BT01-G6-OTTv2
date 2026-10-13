@@ -22,6 +22,7 @@ export type Seat = {
 export type LastMove = { pieceId: string; player: Player; from: Pos; to: Pos };
 export type Game = {
   gameId: string;
+  variantId: string;
   matchId: string;
   match: number;
   version: number;
@@ -40,17 +41,45 @@ export const icons: Record<Kind, string> = {
   paper: "✋",
   scissors: "✌️",
 };
-export const inside = (p: Pos) =>
-  p.row >= 0 && p.row < 9 && p.col >= 0 && p.col < 9;
+const variants = {
+  "classic-9x9": { rows: 9, cols: 9 },
+  "classic-10x10": { rows: 10, cols: 10 },
+} as const;
+type VariantId = keyof typeof variants;
+const defaultVariantId: VariantId = "classic-9x9";
+function boardFor(variantId: string) {
+  const board = variants[variantId as VariantId];
+  if (!board) throw new Error(`Unknown game variant: ${variantId}`);
+  return board;
+}
+export const inside = (p: Pos, variantId: string = defaultVariantId) => {
+  const board = boardFor(variantId);
+  return (
+    p.row >= 0 &&
+    p.row < board.rows &&
+    p.col >= 0 &&
+    p.col < board.cols
+  );
+};
 export const same = (a: Pos, b: Pos) => a.row === b.row && a.col === b.col;
-export const label = (p: Pos) => `${"abcdefghi"[p.col]}${p.row + 1}`;
+export function label(p: Pos) {
+  let value = p.col + 1;
+  let column = "";
+  while (value > 0) {
+    value--;
+    column = String.fromCharCode(97 + (value % 26)) + column;
+    value = Math.floor(value / 26);
+  }
+  return `${column}${p.row + 1}`;
+}
 export const at = (pieces: Piece[], p: Pos) =>
   pieces.find((x) => same(x.position, p));
 export const beats = (a: Kind, b: Kind) =>
   (a === "rock" && b === "scissors") ||
   (a === "scissors" && b === "paper") ||
   (a === "paper" && b === "rock");
-export function initialPieces(): Piece[] {
+export function initialPieces(variantId: string = defaultVariantId): Piece[] {
+  const board = boardFor(variantId);
   const result: Piece[] = [];
   for (const owner of [1, 2] as Player[])
     for (let i = 0; i < 9; i++)
@@ -61,27 +90,42 @@ export function initialPieces(): Piece[] {
         position:
           owner === 1
             ? { row: 1 + Math.floor(i / 3), col: i % 3 }
-            : { row: 7 - Math.floor(i / 3), col: 8 - (i % 3) },
+            : {
+                row: board.rows - 2 - Math.floor(i / 3),
+                col: board.cols - 1 - (i % 3),
+              },
       });
   return result;
 }
-export const fresh = (gameId: string): Game => ({
-  gameId,
-  matchId: newId(),
-  match: 1,
-  version: 0,
-  status: "WAITING",
-  seats: [null, null],
-  pieces: [],
-  turn: 1,
-  winner: null,
-  reason: "",
-  history: [],
-  lastMove: null,
-});
-export function legal(pieces: Piece[], piece: Piece, to: Pos): boolean {
+export const fresh = (
+  gameId: string,
+  variantId: string = defaultVariantId,
+): Game => {
+  boardFor(variantId);
+  return {
+    gameId,
+    variantId,
+    matchId: newId(),
+    match: 1,
+    version: 0,
+    status: "WAITING",
+    seats: [null, null],
+    pieces: [],
+    turn: 1,
+    winner: null,
+    reason: "",
+    history: [],
+    lastMove: null,
+  };
+};
+export function legal(
+  pieces: Piece[],
+  piece: Piece,
+  to: Pos,
+  variantId: string = defaultVariantId,
+): boolean {
   if (
-    !inside(to) ||
+    !inside(to, variantId) ||
     Math.max(
       Math.abs(piece.position.row - to.row),
       Math.abs(piece.position.col - to.col),
@@ -93,18 +137,24 @@ export function legal(pieces: Piece[], piece: Piece, to: Pos): boolean {
     !target || (target.owner !== piece.owner && beats(piece.type, target.type))
   );
 }
-export function legalMoves(pieces: Piece[], piece: Piece): Pos[] {
+export function legalMoves(
+  pieces: Piece[],
+  piece: Piece,
+  variantId: string = defaultVariantId,
+): Pos[] {
   const result: Pos[] = [];
   for (let dr = -1; dr <= 1; dr++)
     for (let dc = -1; dc <= 1; dc++) {
       const to = { row: piece.position.row + dr, col: piece.position.col + dc };
-      if (legal(pieces, piece, to)) result.push(to);
+      if (legal(pieces, piece, to, variantId)) result.push(to);
     }
   return result;
 }
 export function hasMove(g: Game, owner: Player) {
   return g.pieces.some(
-    (p) => p.owner === owner && legalMoves(g.pieces, p).length > 0,
+    (p) =>
+      p.owner === owner &&
+      legalMoves(g.pieces, p, g.variantId).length > 0,
   );
 }
 export function applyMove(g: Game, m: Move): Game {
@@ -124,7 +174,7 @@ export function applyMove(g: Game, m: Move): Game {
     !piece ||
     piece.owner !== g.turn ||
     !same(piece.position, m.from) ||
-    !legal(g.pieces, piece, m.to)
+    !legal(g.pieces, piece, m.to, g.variantId)
   )
     return g;
   const victim = at(g.pieces, m.to);
@@ -134,8 +184,9 @@ export function applyMove(g: Game, m: Move): Game {
   const other = (g.turn === 1 ? 2 : 1) as Player;
   let reason = "";
   let winner: Player | null = null;
+  const board = boardFor(g.variantId);
   if (
-    (g.turn === 1 && same(m.to, { row: 8, col: 8 })) ||
+    (g.turn === 1 && same(m.to, { row: board.rows - 1, col: board.cols - 1 })) ||
     (g.turn === 2 && same(m.to, { row: 0, col: 0 }))
   ) {
     winner = g.turn;
@@ -187,7 +238,7 @@ export function start(g: Game): Game {
   return {
     ...g,
     status: "PLAYING",
-    pieces: initialPieces(),
+    pieces: initialPieces(g.variantId),
     turn: g.match % 2 === 1 ? 1 : 2,
     version: g.version + 1,
     lastMove: null,
@@ -200,7 +251,7 @@ export function rematch(g: Game): Game {
     ...g,
     match: g.match + 1,
     matchId: newId(),
-    pieces: initialPieces(),
+    pieces: initialPieces(g.variantId),
     turn: g.match % 2 === 1 ? 2 : 1,
     winner: null,
     reason: "",
@@ -223,6 +274,9 @@ export function rematch(g: Game): Game {
 
 export type BotMove = { pieceId: string; to: Pos };
 export type BotSnapshot = {
+  variantId: string;
+  board: { rows: number; cols: number };
+  goal: Pos;
   player: Player;
   turn: Player;
   version: number;
@@ -256,7 +310,7 @@ export function allLegalMoves(
   return g.pieces
     .filter((p) => p.owner === owner)
     .flatMap((piece) =>
-      legalMoves(g.pieces, piece).map((to) => ({
+      legalMoves(g.pieces, piece, g.variantId).map((to) => ({
         pieceId: piece.id,
         from: { ...piece.position },
         to: { ...to },
@@ -266,7 +320,14 @@ export function allLegalMoves(
 
 /** Only share public board data with a bot, never player identities / room secrets. */
 export function botSnapshot(g: Game): BotSnapshot {
+  const board = boardFor(g.variantId);
   return {
+    variantId: g.variantId,
+    board: { ...board },
+    goal:
+      g.turn === 1
+        ? { row: board.rows - 1, col: board.cols - 1 }
+        : { row: 0, col: 0 },
     player: g.turn,
     turn: g.turn,
     version: g.version,
@@ -318,11 +379,12 @@ export function botDecisionToMove(
 export function createBotGame(
   names: [string, string],
   gameId: string = newId(),
+  variantId: string = defaultVariantId,
 ): Game {
   if (names.some((name) => !name.trim()))
     throw new Error("Each bot must have a name");
   const waiting: Game = {
-    ...fresh(gameId),
+    ...fresh(gameId, variantId),
     seats: [
       { id: `${gameId}-bot-1`, name: names[0], ready: true, rematch: false },
       { id: `${gameId}-bot-2`, name: names[1], ready: true, rematch: false },

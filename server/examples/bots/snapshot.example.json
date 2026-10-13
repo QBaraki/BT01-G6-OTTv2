@@ -2,6 +2,9 @@
   "player": 1,
   "turn": 1,
   "version": 1,
+  "variantId": "classic-9x9",
+  "board": { "rows": 9, "cols": 9 },
+  "goal": { "row": 8, "col": 8 },
   "pieces": [
     {
       "id": "p1-0",

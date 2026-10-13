@@ -136,9 +136,15 @@ const server = createServer(async (req, res) => {
       if (
         typeof body?.botA !== "string" ||
         typeof body?.botB !== "string" ||
-        body.botA === body.botB
+        body.botA === body.botB ||
+        (body.variantId !== undefined &&
+          !["classic-9x9", "classic-10x10"].includes(body.variantId))
       )
-        return json(res, 400, { error: "Choose two different saved bot IDs" });
+        return json(res, 400, {
+          error:
+            "Choose two different saved bot IDs and a supported variantId",
+        });
+      const variantId = body.variantId ?? "classic-9x9";
       const a = await scripts.get(body.botA),
         b = await scripts.get(body.botB);
       if (!a || !b)
@@ -150,12 +156,17 @@ const server = createServer(async (req, res) => {
         return json(res, 400, { error: "maxTurns must be 1..200" });
       matchBusy = true;
       try {
-        const result = await fightScripts(a, b, { maxTurns, timeoutMs: 10000 });
+        const result = await fightScripts(a, b, {
+          maxTurns,
+          timeoutMs: 10000,
+          variantId,
+        });
         const { game, ...publicResult } = result;
         const record = await store.append({
           kind: "BOT_MATCH",
           botA: a.id,
           botB: b.id,
+          variantId,
           outcome: result.outcome,
           winner: result.winner,
           reason: result.reason,

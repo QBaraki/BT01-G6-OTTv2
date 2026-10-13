@@ -277,6 +277,8 @@ export type BotMove = { pieceId: string; to: Pos };
 export type BotSnapshot = {
   variantId: string;
   variantVersion: number;
+  board: { rows: number; cols: number };
+  goal: Pos;
   player: Player;
   turn: Player;
   version: number;
@@ -321,9 +323,15 @@ export function allLegalMoves(
 
 /** Only share public board data with a bot, never player identities / room secrets. */
 export function botSnapshot(g: Game): BotSnapshot {
+  const variant = getVariant(g.variantId);
   return {
     variantId: g.variantId,
     variantVersion: g.variantVersion,
+    board: {
+      rows: variant.board.rows,
+      cols: variant.board.cols,
+    },
+    goal: { ...variant.victory.goals[g.turn]! },
     player: g.turn,
     turn: g.turn,
     version: g.version,

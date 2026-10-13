@@ -25,16 +25,21 @@ const compiled = ts.transpileModule(prepared, {
 const engine = await import(
   "data:text/javascript;base64," + Buffer.from(compiled).toString("base64")
 );
+export { engine as matchEngine };
 
 export async function fightScripts(
   botA,
   botB,
-  { maxTurns = 100, timeoutMs = 2500 } = {},
+  { maxTurns = 100, timeoutMs = 2500, variantId = "classic-9x9" } = {},
 ) {
   if (!Number.isInteger(maxTurns) || maxTurns < 1 || maxTurns > 500)
     throw Error("maxTurns must be 1..500");
   const bots = [botA, botB];
-  let game = engine.createBotGame([botA.name, botB.name]);
+  let game = engine.createBotGame(
+    [botA.name, botB.name],
+    undefined,
+    variantId,
+  );
   const events = [];
   let outcome = "DRAW";
   for (let turn = 1; turn <= maxTurns && game.status === "PLAYING"; turn++) {
@@ -83,5 +88,12 @@ export async function fightScripts(
     };
     outcome = "TURN_LIMIT";
   } else if (outcome !== "FORFEIT") outcome = game.winner ? "WIN" : "DRAW";
-  return { outcome, winner: game.winner, reason: game.reason, events, game };
+  return {
+    outcome,
+    winner: game.winner,
+    reason: game.reason,
+    variantId: game.variantId,
+    events,
+    game,
+  };
 }

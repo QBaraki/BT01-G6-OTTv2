@@ -13,12 +13,16 @@ Ví dụ đầy đủ nằm trong [`snapshot.example.json`](./snapshot.example.j
 | `player` | `1` hoặc `2` | Người chơi mà bot điều khiển |
 | `turn` | `1` hoặc `2` | Người chơi đang tới lượt |
 | `version` | số nguyên | Phiên bản trạng thái hiện tại |
+| `variantId` | chuỗi | Biến thể bàn cờ, ví dụ `classic-9x9` hoặc `classic-10x10` |
+| `board` | object | Kích thước bàn gồm `rows` và `cols` |
+| `goal` | tọa độ | Góc đích của người chơi hiện tại |
 | `pieces` | mảng quân cờ | Toàn bộ quân còn trên bàn |
 | `legalMoves` | mảng nước đi | Tất cả nước hợp lệ cho lượt này |
 
 Mỗi quân trong `pieces` có `id`, `owner`, `type` và `position`. `position` gồm
 `row` và `col`, đánh số từ 0. Mỗi phần tử `legalMoves` có `pieceId`, `from` và
-`to`; mỗi tọa độ cũng gồm `row` và `col`.
+`to`; mỗi tọa độ cũng gồm `row` và `col`. Dùng `goal` hoặc `board` thay vì
+giả định bàn luôn là 9×9 để bot hoạt động trên nhiều biến thể.
 
 ## Điểm vào theo ngôn ngữ
 

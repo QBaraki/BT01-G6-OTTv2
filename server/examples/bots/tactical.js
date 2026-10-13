@@ -1,6 +1,6 @@
 export function getMove(state) {
-  const target =
-    state.player === 1 ? { row: 8, col: 8 } : { row: 0, col: 0 };
+  const target = state.goal ??
+    (state.player === 1 ? { row: 8, col: 8 } : { row: 0, col: 0 });
   const enemyAt = new Map(
     state.pieces
       .filter((piece) => piece.owner !== state.player)

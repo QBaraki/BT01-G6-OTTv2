@@ -1,5 +1,10 @@
 def get_move(state):
-    target = (8, 8) if state["player"] == 1 else (0, 0)
+    goal = state.get("goal")
+    target = (
+        (goal["row"], goal["col"])
+        if goal
+        else ((8, 8) if state["player"] == 1 else (0, 0))
+    )
     enemies = {
         (piece["position"]["row"], piece["position"]["col"])
         for piece in state["pieces"]

@@ -6,6 +6,8 @@ import {
   applyMove,
   start,
   fresh,
+  botSnapshot,
+  createBotGame,
   type Game,
   type Piece,
 } from "../src/game/engine";
@@ -91,6 +93,20 @@ describe("engine", () => {
       expectedVersion: goalGame.version,
     });
     expect(result.winner).toBe(1);
+  });
+  it("creates 10x10 bot matches with matching snapshots and goals", () => {
+    const variant = getVariant(largeBoardVariant.id);
+    const game = createBotGame(["Bot A", "Bot B"], "bot-match", variant.id);
+    const snapshot = botSnapshot(game);
+
+    expect(game.pieces).toHaveLength(18);
+    expect(game.pieces.find((piece) => piece.owner === 2)?.position).toEqual({
+      row: 8,
+      col: 9,
+    });
+    expect(snapshot.variantId).toBe(variant.id);
+    expect(snapshot.board).toEqual({ rows: 10, cols: 10 });
+    expect(snapshot.goal).toEqual({ row: 9, col: 9 });
   });
   it("blocks configured obstacle cells", () => {
     const variant = getVariant(largeBoardVariant.id);
